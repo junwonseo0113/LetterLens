@@ -151,3 +151,30 @@ def test_j_income_too_high_not_now_with_explanation():
     assert "exceeds" in msp.rule_applied
     assert extra_help.status == Status.NOT_NOW
     assert snap.status == Status.NOT_NOW
+
+
+def test_k_elderly_exempt_from_snap_gross_test_and_asset_test():
+    # Fails the 200% FPL gross test ($2,700 > $2,660) but federal law (7 CFR
+    # 273.9) exempts elderly households from that test -- net income
+    # ($1,307.50) clears 100% FPL ($1,330) with no asset test, so this
+    # should be LIKELY even with savings well above the $4,500 asset limit.
+    profile = Profile(age=65, earned_income_monthly=2700, savings=10_000)
+    results = evaluate(profile)
+    snap = _by_program(results, "SNAP")
+
+    assert snap.status == Status.LIKELY
+    assert "elderly" in snap.rule_applied.lower()
+
+
+def test_l_non_elderly_still_needs_net_and_asset_test():
+    # Same income shape as test K, but under 60 and not disabled -- the
+    # elderly/disabled exemption doesn't apply, so the old net+asset rule
+    # still governs.
+    high_savings = Profile(age=45, earned_income_monthly=2700, savings=10_000)
+    low_savings = Profile(age=45, earned_income_monthly=2700, savings=2_000)
+
+    high_savings_snap = _by_program(evaluate(high_savings), "SNAP")
+    low_savings_snap = _by_program(evaluate(low_savings), "SNAP")
+
+    assert high_savings_snap.status == Status.NOT_NOW
+    assert low_savings_snap.status == Status.POSSIBLE

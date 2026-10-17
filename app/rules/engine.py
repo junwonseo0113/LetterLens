@@ -248,6 +248,15 @@ def _evaluate_snap(
         + ((profile.earned_income_monthly_spouse or 0.0) if profile.married else 0.0)
     )
 
+    # Federal law (7 CFR 273.9; confirmed 2026-10-17 against fns.usda.gov and
+    # eCFR) exempts households with an elderly (60+) or disabled member from
+    # the gross income test entirely -- they only have to meet the net
+    # income test, with no asset test tied to that exemption. The 200% FPL
+    # gross test below is a separate, NY-specific BBCE path that most
+    # households (elderly or not) can also use -- it isn't replaced by the
+    # exemption, just not the only route for this app's elderly user base.
+    household_has_elderly_or_disabled = profile.age >= 60 or profile.disability
+
     numbers_used = {
         "household_gross_monthly_income": round(household_gross_monthly, 2),
         "fpl_200_monthly": round(fpl_200_monthly, 2),
@@ -261,6 +270,14 @@ def _evaluate_snap(
         rule = (
             f"Household gross income ${household_gross_monthly:,.2f}/mo <= 200% FPL "
             f"${fpl_200_monthly:,.2f}/mo; exact benefit amount set by HRA"
+        )
+    elif household_has_elderly_or_disabled and countable <= fpl_100_monthly:
+        status = Status.LIKELY
+        rule = (
+            f"Household gross income ${household_gross_monthly:,.2f}/mo exceeds 200% FPL, but "
+            "federal law exempts households with an elderly (60+) or disabled member from the "
+            f"gross income test (7 CFR 273.9) -- net income ${countable:,.2f}/mo <= 100% FPL "
+            f"${fpl_100_monthly:,.2f}/mo is enough on its own, no asset test applies"
         )
     elif countable <= fpl_100_monthly and profile.savings <= limits.SNAP_ASSET_LIMIT.value:
         status = Status.POSSIBLE
