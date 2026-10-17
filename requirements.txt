@@ -1,1 +1,9 @@
+fastapi
+uvicorn[standard]
+sqlmodel
+python-multipart
+httpx
 pytest
+
+# Only required when MOCK_MODE=false (real OCI calls):
+# oci
