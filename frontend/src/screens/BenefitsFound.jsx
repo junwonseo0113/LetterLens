@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import BigButton from "../components/BigButton";
+import IconBadge from "../components/IconBadge";
 import Layout from "../components/Layout";
 import TracePanel from "../components/TracePanel";
 import { useLanguage } from "../context/LanguageContext";
@@ -33,7 +34,10 @@ export default function BenefitsFound() {
         benefits.map((b) => (
           <div className="card benefit-card" key={b.program}>
             <div className="benefit-card-header">
-              <h2 style={{ margin: 0 }}>{b.program}</h2>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <IconBadge kind={b.program} size={36} />
+                <h2 style={{ margin: 0 }}>{b.program}</h2>
+              </div>
               <span className={`badge ${b.status}`}>{t(language, STATUS_KEY[b.status])}</span>
             </div>
 

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import BigButton from "../components/BigButton";
+import IconBadge from "../components/IconBadge";
 import { useLanguage } from "../context/LanguageContext";
 import { t } from "../strings";
 import { fetchLetters, fetchReminders, setOnQmb, uploadLetter } from "../api";
@@ -19,7 +20,9 @@ const LETTER_TYPE_LABEL = {
 export default function Home() {
   const { language } = useLanguage();
   const navigate = useNavigate();
+  const location = useLocation();
   const fileInputRef = useRef(null);
+  const pastLettersRef = useRef(null);
   const [letters, setLetters] = useState([]);
   const [reminders, setReminders] = useState([]);
   const [uploading, setUploading] = useState(false);
@@ -31,6 +34,12 @@ export default function Home() {
     fetchLetters(USER_ID).then(setLetters).catch(() => {});
     fetchReminders(USER_ID).then(setReminders).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (location.state?.scrollTo === "past-letters") {
+      pastLettersRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [location.state]);
 
   async function handleQmbToggle(event) {
     const next = event.target.checked;
@@ -93,7 +102,8 @@ export default function Home() {
           <div className="ios-list">
             {reminders.map((r) => (
               <div key={r.id} className="reminder-item">
-                <span>
+                <IconBadge kind={r.program} size={36} />
+                <span style={{ flex: 1 }}>
                   {r.program}
                   {r.packet && (
                     <>
@@ -126,7 +136,7 @@ export default function Home() {
         </p>
       </div>
 
-      <div className="section">
+      <div className="section" ref={pastLettersRef} id="past-letters">
         <h3>{t(language, "pastLetters")}</h3>
         {letters.length === 0 ? (
           <p>{t(language, "noLettersYet")}</p>
@@ -134,7 +144,8 @@ export default function Home() {
           <div className="ios-list">
             {letters.map((l) => (
               <div key={l.id} className="letter-list-item">
-                <span>{LETTER_TYPE_LABEL[l.letter_type] || l.letter_type}</span>
+                <IconBadge kind={l.letter_type} size={36} />
+                <span style={{ flex: 1 }}>{LETTER_TYPE_LABEL[l.letter_type] || l.letter_type}</span>
                 <span style={{ color: "var(--color-muted)" }}>
                   {new Date(l.created_at).toLocaleDateString()}
                 </span>
