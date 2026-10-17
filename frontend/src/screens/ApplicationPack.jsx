@@ -25,11 +25,22 @@ export default function ApplicationPack() {
         {reminders.length === 0 && <p>&mdash;</p>}
         {reminders.map((r) => (
           <div key={r.id} className="card" style={{ marginBottom: 12 }}>
-            <strong>{r.program}</strong>
-            <ul>
-              {r.checklist.map((item, i) => (
-                <li key={i}>{item}</li>
-              ))}
+            <div className="benefit-card-header">
+              <strong>{r.program}</strong>
+              {r.packet && (
+                <span className={`badge ${r.packet.all_satisfied ? "likely" : "possible"}`}>
+                  {r.packet.satisfied_count}/{r.packet.total_count} {t(language, "documentsReady")}
+                </span>
+              )}
+            </div>
+            <ul style={{ listStyle: "none", paddingLeft: 0 }}>
+              {(r.packet?.items ?? r.checklist.map((item) => ({ item, satisfied: false }))).map(
+                (packetItem, i) => (
+                  <li key={i}>
+                    {packetItem.satisfied ? "✅" : "⬜"} {packetItem.item}
+                  </li>
+                ),
+              )}
             </ul>
           </div>
         ))}

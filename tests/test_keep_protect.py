@@ -6,9 +6,10 @@ from fastapi.testclient import TestClient
 from sqlmodel import Session, SQLModel
 
 from app.db import engine
+from app.keep.packet import check_packet_readiness
 from app.keep.reminders import create_reminder, list_reminders, to_reminder_out
 from app.main import app
-from app.models import ProfileRecord, Reminder
+from app.models import LetterRecord, ProfileRecord, Reminder
 from app.protect.bill_check import check_qmb_bill
 
 client = TestClient(app)
@@ -52,7 +53,7 @@ def test_create_and_list_reminder_computes_countdown():
             deadline=date(2026, 11, 15),
             checklist=["proof of income"],
         )
-        out = to_reminder_out(reminder, today=date(2026, 10, 17))
+        out = to_reminder_out(session, reminder, today=date(2026, 10, 17))
 
     assert out.days_until_deadline == 29
     assert out.overdue is False
@@ -68,7 +69,7 @@ def test_overdue_reminder_flagged():
             deadline=date(2026, 1, 1),
             checklist=[],
         )
-        out = to_reminder_out(reminder, today=date(2026, 10, 17))
+        out = to_reminder_out(session, reminder, today=date(2026, 10, 17))
 
     assert out.overdue is True
     assert out.days_until_deadline < 0
@@ -104,6 +105,106 @@ def test_hra_upload_creates_reminder_via_pipeline():
 def test_non_renewal_upload_has_no_reminder():
     response = _upload("ssa_sample.jpg")
     assert response.json()["reminder"] is None
+
+
+# --- KEEP: document packet readiness ---------------------------------------
+
+
+def test_packet_readiness_no_letters_uploaded_everything_missing():
+    with Session(engine) as session:
+        reminder = create_reminder(
+            session,
+            user_id="demo",
+            letter_id=1,
+            program="SNAP",
+            deadline=date(2026, 11, 15),
+            checklist=["proof of income", "proof of residence", "ID"],
+        )
+        readiness = check_packet_readiness(session, reminder)
+
+    assert readiness.satisfied_count == 0
+    assert readiness.total_count == 3
+    assert readiness.all_satisfied is False
+    assert all(not item.satisfied for item in readiness.items)
+
+
+def test_packet_readiness_ssa_letter_satisfies_proof_of_income():
+    with Session(engine) as session:
+        letter = LetterRecord(user_id="demo", letter_type="ssa_benefit_letter", extracted_fields={})
+        session.add(letter)
+        session.commit()
+        session.refresh(letter)
+
+        reminder = create_reminder(
+            session,
+            user_id="demo",
+            letter_id=1,
+            program="SNAP",
+            deadline=date(2026, 11, 15),
+            checklist=["proof of income", "proof of residence", "ID"],
+        )
+        readiness = check_packet_readiness(session, reminder)
+
+    income_item = next(i for i in readiness.items if i.item == "proof of income")
+    residence_item = next(i for i in readiness.items if i.item == "proof of residence")
+
+    assert income_item.satisfied is True
+    assert income_item.matched_letter_id == letter.id
+    assert income_item.matched_letter_type == "ssa_benefit_letter"
+    assert residence_item.satisfied is False
+    assert readiness.satisfied_count == 1
+    assert readiness.all_satisfied is False
+
+
+def test_packet_readiness_bank_statement_also_satisfies_income():
+    with Session(engine) as session:
+        session.add(LetterRecord(user_id="demo", letter_type="bank_statement", extracted_fields={}))
+        session.commit()
+
+        reminder = create_reminder(
+            session,
+            user_id="demo",
+            letter_id=1,
+            program="SNAP",
+            deadline=date(2026, 11, 15),
+            checklist=["proof of income"],
+        )
+        readiness = check_packet_readiness(session, reminder)
+
+    assert readiness.items[0].satisfied is True
+    assert readiness.items[0].matched_letter_type == "bank_statement"
+
+
+def test_packet_readiness_medical_bill_does_not_satisfy_anything():
+    with Session(engine) as session:
+        session.add(LetterRecord(user_id="demo", letter_type="medical_bill", extracted_fields={}))
+        session.commit()
+
+        reminder = create_reminder(
+            session,
+            user_id="demo",
+            letter_id=1,
+            program="SNAP",
+            deadline=date(2026, 11, 15),
+            checklist=["proof of income", "ID"],
+        )
+        readiness = check_packet_readiness(session, reminder)
+
+    assert readiness.satisfied_count == 0
+
+
+def test_packet_readiness_via_letters_endpoint():
+    _upload("ssa_sample.jpg")
+    _upload("hra_sample.jpg")
+
+    listed = client.get("/reminders", params={"user_id": "demo"}).json()
+    packet = listed[0]["packet"]
+
+    assert packet["satisfied_count"] == 1
+    assert packet["total_count"] == 3
+    assert packet["all_satisfied"] is False
+    income_item = next(i for i in packet["items"] if i["item"] == "proof of income")
+    assert income_item["satisfied"] is True
 
 
 # --- PROTECT: QMB bill check ------------------------------------------------

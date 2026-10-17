@@ -73,7 +73,15 @@ export default function Home() {
         {reminders.length === 0 && <p>{t(language, "noDeadlines")}</p>}
         {reminders.map((r) => (
           <div key={r.id} className="reminder-item">
-            <span>{r.program}</span>
+            <span>
+              {r.program}
+              {r.packet && (
+                <>
+                  {" "}
+                  &middot; {r.packet.satisfied_count}/{r.packet.total_count} {t(language, "documentsReady")}
+                </>
+              )}
+            </span>
             <span>
               {r.overdue ? t(language, "overdue") : `${r.days_until_deadline} ${t(language, "daysLeft")}`}
             </span>

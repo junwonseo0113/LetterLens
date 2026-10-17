@@ -10,6 +10,7 @@ from sqlmodel import Session, select
 
 from app.models import Reminder
 
+from .packet import check_packet_readiness
 from .schemas import ReminderOut
 
 
@@ -25,7 +26,7 @@ def create_reminder(
     return reminder
 
 
-def to_reminder_out(reminder: Reminder, today: date | None = None) -> ReminderOut:
+def to_reminder_out(session: Session, reminder: Reminder, today: date | None = None) -> ReminderOut:
     today = today or date.today()
     days_until = (reminder.deadline - today).days
     return ReminderOut(
@@ -35,10 +36,11 @@ def to_reminder_out(reminder: Reminder, today: date | None = None) -> ReminderOu
         checklist=list(reminder.checklist),
         days_until_deadline=days_until,
         overdue=days_until < 0,
+        packet=check_packet_readiness(session, reminder),
     )
 
 
 def list_reminders(session: Session, user_id: str) -> list[ReminderOut]:
     reminders = session.exec(select(Reminder).where(Reminder.user_id == user_id)).all()
     reminders = sorted(reminders, key=lambda r: r.deadline)
-    return [to_reminder_out(r) for r in reminders]
+    return [to_reminder_out(session, r) for r in reminders]

@@ -109,7 +109,7 @@ def process_letter(
             deadline=validated.deadline,
             checklist=fields.get("required_documents", []),
         )
-        reminder_out = to_reminder_out(reminder_row)
+        reminder_out = to_reminder_out(session, reminder_row)
 
     if letter_type == LetterType.MEDICAL_BILL:
         bill_check_out = check_qmb_bill(
