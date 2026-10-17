@@ -7,7 +7,7 @@ extraction.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Optional
 
 from sqlmodel import JSON, Column, Field, SQLModel
@@ -37,6 +37,9 @@ class ProfileRecord(SQLModel, table=True):
     savings: float = 0.0
     household_size: int = 1
     owns_home: bool = False
+    # Documented current enrollment -- distinct from the rules engine's
+    # computed "likely eligible for QMB", which is a separate question.
+    on_qmb: bool = False
 
     # field_name -> letter_id that most recently set it
     field_sources: dict = Field(default_factory=dict, sa_column=Column(JSON))
@@ -52,4 +55,14 @@ class LetterRecord(SQLModel, table=True):
     user_id: str
     letter_type: str
     extracted_fields: dict = Field(default_factory=dict, sa_column=Column(JSON))
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class Reminder(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: str
+    letter_id: int
+    program: str
+    deadline: date
+    checklist: list[str] = Field(default_factory=list, sa_column=Column(JSON))
     created_at: datetime = Field(default_factory=datetime.utcnow)

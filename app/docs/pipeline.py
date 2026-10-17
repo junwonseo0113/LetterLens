@@ -11,7 +11,10 @@ from datetime import date
 
 from sqlmodel import Session
 
+from app.keep.reminders import create_reminder, to_reminder_out
 from app.models import LetterRecord, ProfileRecord
+from app.protect.bill_check import check_qmb_bill
+from app.protect.oci_client import draft_dispute_letter
 
 from . import oci_client
 from .profile_merge import merge_fields_into_profile
@@ -94,6 +97,32 @@ def process_letter(
     session.add(profile)
     session.commit()
 
+    reminder_out = None
+    bill_check_out = None
+
+    if letter_type == LetterType.HRA_RENEWAL_NOTICE:
+        reminder_row = create_reminder(
+            session,
+            user_id=user_id,
+            letter_id=letter_record.id,
+            program=fields["program"],
+            deadline=validated.deadline,
+            checklist=fields.get("required_documents", []),
+        )
+        reminder_out = to_reminder_out(reminder_row)
+
+    if letter_type == LetterType.MEDICAL_BILL:
+        bill_check_out = check_qmb_bill(
+            on_qmb=profile.on_qmb,
+            provider=fields["provider"],
+            is_medicare_claim=fields["is_medicare_claim"],
+            line_items=fields.get("line_items", []),
+        )
+        if bill_check_out.has_flagged:
+            bill_check_out.dispute_letter = draft_dispute_letter(
+                fields["provider"], bill_check_out.flagged_line_items, language
+            )
+
     return LetterUploadResponse(
         letter_id=letter_record.id,
         letter_type=letter_type,
@@ -102,4 +131,6 @@ def process_letter(
         action_items=action_items,
         deadline=deadline,
         profile_fields_updated=updated_fields,
+        reminder=reminder_out,
+        bill_check=bill_check_out,
     )

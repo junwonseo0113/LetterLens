@@ -57,6 +57,9 @@ class Profile:
     savings: float = 0.0
     household_size: int = 1
     owns_home: bool = False
+    # Documented current enrollment -- distinct from this engine's computed
+    # "likely eligible for QMB", used by the PROTECT illegal-billing check.
+    on_qmb: bool = False
 
 
 @dataclass

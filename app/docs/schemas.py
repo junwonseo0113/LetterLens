@@ -12,6 +12,9 @@ from enum import Enum
 
 from pydantic import BaseModel, Field
 
+from app.keep.schemas import ReminderOut
+from app.protect.schemas import BillCheckResult
+
 
 class LetterType(str, Enum):
     SSA_BENEFIT_LETTER = "ssa_benefit_letter"
@@ -86,3 +89,5 @@ class LetterUploadResponse(BaseModel):
     action_items: list[str]
     deadline: date | None = None
     profile_fields_updated: list[str]
+    reminder: ReminderOut | None = None
+    bill_check: BillCheckResult | None = None
