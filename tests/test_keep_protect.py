@@ -271,3 +271,19 @@ def test_bill_upload_for_non_qmb_member_has_no_dispute_letter():
 
     assert body["bill_check"]["has_flagged"] is False
     assert body["bill_check"]["dispute_letter"] is None
+
+
+def test_on_qmb_toggle_endpoint_drives_the_bill_flag_live():
+    # This is the actual live-demo path: no DB hacking, just the toggle
+    # a presenter can hit from the UI before uploading the bill.
+    toggle = client.post("/profile/on-qmb", params={"user_id": "demo", "on_qmb": True})
+    assert toggle.status_code == 200
+    assert toggle.json() == {"user_id": "demo", "on_qmb": True}
+
+    response = _upload("bill_sample.jpg")
+    assert response.json()["bill_check"]["has_flagged"] is True
+
+    # Toggling back off should stop future bills from being flagged.
+    client.post("/profile/on-qmb", params={"user_id": "demo", "on_qmb": False})
+    response2 = _upload("bill_sample.jpg")
+    assert response2.json()["bill_check"]["has_flagged"] is False

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import BigButton from "../components/BigButton";
 import { useLanguage } from "../context/LanguageContext";
 import { t } from "../strings";
-import { fetchLetters, fetchReminders, uploadLetter } from "../api";
+import { fetchLetters, fetchReminders, setOnQmb, uploadLetter } from "../api";
 
 const USER_ID = "demo";
 
@@ -24,11 +24,26 @@ export default function Home() {
   const [reminders, setReminders] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
+  const [onQmb, setOnQmbState] = useState(false);
+  const [qmbSaving, setQmbSaving] = useState(false);
 
   useEffect(() => {
     fetchLetters(USER_ID).then(setLetters).catch(() => {});
     fetchReminders(USER_ID).then(setReminders).catch(() => {});
   }, []);
+
+  async function handleQmbToggle(event) {
+    const next = event.target.checked;
+    setOnQmbState(next);
+    setQmbSaving(true);
+    try {
+      await setOnQmb(USER_ID, next);
+    } catch {
+      setOnQmbState(!next); // revert on failure
+    } finally {
+      setQmbSaving(false);
+    }
+  }
 
   async function handleFileChange(event) {
     const file = event.target.files?.[0];
@@ -87,6 +102,22 @@ export default function Home() {
             </span>
           </div>
         ))}
+      </section>
+
+      <section className="card">
+        <label style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 20 }}>
+          <input
+            type="checkbox"
+            checked={onQmb}
+            onChange={handleQmbToggle}
+            disabled={qmbSaving}
+            style={{ width: 28, height: 28 }}
+          />
+          {t(language, "qmbToggleLabel")}
+        </label>
+        <p style={{ color: "var(--color-muted)", fontSize: 16, margin: "8px 0 0" }}>
+          {t(language, "qmbToggleHelp")}
+        </p>
       </section>
 
       <section>
