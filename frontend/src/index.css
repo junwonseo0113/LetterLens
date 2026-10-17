@@ -52,7 +52,9 @@ body {
   max-width: 480px;
   margin: 0 auto;
   min-height: 100vh;
-  padding: var(--space);
+  /* iPhone notch / home-indicator safe areas (iOS Safari + installed PWA) */
+  padding: calc(var(--space) + env(safe-area-inset-top)) calc(var(--space) + env(safe-area-inset-right))
+    calc(var(--space) + env(safe-area-inset-bottom)) calc(var(--space) + env(safe-area-inset-left));
   display: flex;
   flex-direction: column;
   gap: var(--space);
