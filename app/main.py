@@ -3,6 +3,7 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.benefits import router as benefits_router
 from app.db import init_db
@@ -17,6 +18,16 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="LetterLens API", lifespan=lifespan)
+
+# Demo-only: wide open so the Vite dev server (any localhost port) can call
+# the API. Tighten this to specific origins before any real deployment.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.include_router(letters_router)
 app.include_router(reminders_router)
 app.include_router(benefits_router)

@@ -1,0 +1,242 @@
+:root {
+  --color-bg: #ffffff;
+  --color-text: #111111;
+  --color-primary: #0b5fff;
+  --color-primary-text: #ffffff;
+  --color-border: #d0d0d0;
+  --color-danger: #b00020;
+  --color-danger-bg: #fdecea;
+  --color-success-bg: #e8f5e9;
+  --color-success-text: #1b5e20;
+  --color-warn-bg: #fff8e1;
+  --color-warn-text: #8a6400;
+  --color-muted: #555555;
+  --font-size-base: 20px;
+  --font-size-lg: 26px;
+  --font-size-xl: 34px;
+  --space: 16px;
+  --radius: 14px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #121212;
+    --color-text: #f5f5f5;
+    --color-border: #3a3a3a;
+    --color-muted: #aaaaaa;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: var(--font-size-base);
+  line-height: 1.5;
+}
+
+.app-shell {
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100vh;
+  padding: var(--space);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space);
+}
+
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 32px;
+}
+
+h1 {
+  font-size: var(--font-size-xl);
+  margin: 0 0 8px;
+}
+
+h2 {
+  font-size: var(--font-size-lg);
+  margin: 0 0 8px;
+}
+
+ul {
+  padding-left: 1.3em;
+}
+
+.big-button {
+  display: block;
+  width: 100%;
+  padding: 20px;
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  background: var(--color-primary);
+  color: var(--color-primary-text);
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  text-align: center;
+  text-decoration: none;
+}
+
+.big-button:active {
+  opacity: 0.85;
+}
+
+.big-button.secondary {
+  background: var(--color-bg);
+  color: var(--color-primary);
+  border: 3px solid var(--color-primary);
+}
+
+.big-button.danger {
+  background: var(--color-danger);
+}
+
+.card {
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--space);
+  background: var(--color-bg);
+}
+
+.back-link {
+  font-size: var(--font-size-base);
+  color: var(--color-primary);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 16px;
+  white-space: nowrap;
+}
+
+.badge.likely,
+.badge.already_enrolled {
+  background: var(--color-success-bg);
+  color: var(--color-success-text);
+}
+
+.badge.possible {
+  background: var(--color-warn-bg);
+  color: var(--color-warn-text);
+}
+
+.badge.not_now,
+.badge.missing_info {
+  background: #f1f1f1;
+  color: #555;
+}
+
+.flagged {
+  background: var(--color-danger-bg);
+  border: 2px solid var(--color-danger);
+  border-radius: var(--radius);
+  padding: var(--space);
+}
+
+.disclaimer {
+  font-size: 16px;
+  color: var(--color-muted);
+  border-top: 1px solid var(--color-border);
+  padding-top: 8px;
+  margin-top: 8px;
+}
+
+.lang-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.letter-list-item,
+.reminder-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  margin-bottom: 8px;
+}
+
+.spinner-wrap {
+  text-align: center;
+  padding: 40px 0;
+  font-size: var(--font-size-lg);
+}
+
+.benefit-card + .benefit-card {
+  margin-top: 16px;
+}
+
+.benefit-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.myth-line {
+  font-style: italic;
+  color: var(--color-muted);
+}
+
+.warning-line {
+  color: var(--color-danger);
+}
+
+table.kv-table {
+  width: 100%;
+  font-size: 16px;
+  margin-top: 8px;
+  border-collapse: collapse;
+}
+
+table.kv-table td {
+  padding: 4px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+table.kv-table td:first-child {
+  color: var(--color-muted);
+  padding-right: 12px;
+}
+
+pre.letter-text {
+  white-space: pre-wrap;
+  font-family: inherit;
+  font-size: 18px;
+  background: color-mix(in srgb, var(--color-bg) 92%, var(--color-text) 8%);
+  border-radius: var(--radius);
+  padding: var(--space);
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  .app-shell {
+    max-width: 100%;
+  }
+}

@@ -7,7 +7,7 @@ loudly rather than silently corrupting a user's data.
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from enum import Enum
 
 from pydantic import BaseModel, Field
@@ -91,3 +91,9 @@ class LetterUploadResponse(BaseModel):
     profile_fields_updated: list[str]
     reminder: ReminderOut | None = None
     bill_check: BillCheckResult | None = None
+
+
+class LetterSummary(BaseModel):
+    id: int
+    letter_type: LetterType
+    created_at: datetime

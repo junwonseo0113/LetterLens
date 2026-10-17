@@ -86,3 +86,26 @@ def test_no_raw_image_bytes_persisted():
     body = response.json()
 
     assert "fake-image-bytes" not in str(body["extracted_fields"])
+
+
+def test_list_letters_returns_uploads_newest_first():
+    _upload("ssa_sample.jpg")
+    _upload("bank_sample.jpg")
+
+    response = client.get("/letters", params={"user_id": "demo"})
+    body = response.json()
+
+    assert len(body) == 2
+    assert body[0]["letter_type"] == "bank_statement"
+    assert body[1]["letter_type"] == "ssa_benefit_letter"
+
+
+def test_list_letters_scoped_to_user():
+    _upload("ssa_sample.jpg", user_id="alice")
+    _upload("bank_sample.jpg", user_id="bob")
+
+    response = client.get("/letters", params={"user_id": "alice"})
+    body = response.json()
+
+    assert len(body) == 1
+    assert body[0]["letter_type"] == "ssa_benefit_letter"

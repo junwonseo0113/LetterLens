@@ -1,14 +1,25 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile
-from sqlmodel import Session
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, UploadFile
+from sqlmodel import Session, select
 
 from app.db import get_session
+from app.models import LetterRecord
 
 from .pipeline import ExtractionError, process_letter
-from .schemas import LetterUploadResponse
+from .schemas import LetterSummary, LetterUploadResponse
 
 router = APIRouter()
+
+
+@router.get("/letters", response_model=list[LetterSummary])
+def list_letters(user_id: str = Query("demo"), session: Session = Depends(get_session)) -> list[LetterSummary]:
+    records = session.exec(
+        select(LetterRecord).where(LetterRecord.user_id == user_id).order_by(LetterRecord.created_at.desc())
+    ).all()
+    return [
+        LetterSummary(id=r.id, letter_type=r.letter_type, created_at=r.created_at) for r in records
+    ]
 
 
 @router.post("/letters", response_model=LetterUploadResponse)
