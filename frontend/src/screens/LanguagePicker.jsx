@@ -14,23 +14,15 @@ export default function LanguagePicker() {
   return (
     <div className="app-shell">
       <h1>LetterLens</h1>
-      <div className="airmail-rule" aria-hidden="true">
-        <span />
-        <span />
-        <span />
-      </div>
-      <p style={{ fontSize: "var(--font-size-sm)" }}>{t(language || "en", "chooseLanguage")}</p>
-      <div className="lang-grid">
-        {LANGUAGES.map((l) => (
-          <button
-            key={l.code}
-            type="button"
-            className="big-button secondary"
-            onClick={() => choose(l.code)}
-          >
-            {l.native}
-          </button>
-        ))}
+      <div className="section">
+        <h3>{t(language || "en", "chooseLanguage")}</h3>
+        <div className="lang-grid">
+          {LANGUAGES.map((l) => (
+            <button key={l.code} type="button" onClick={() => choose(l.code)}>
+              {l.native}
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );

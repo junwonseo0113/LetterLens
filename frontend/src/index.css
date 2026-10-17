@@ -1,11 +1,10 @@
-/* Atkinson Hyperlegible -- designed by the Braille Institute for maximum
-   legibility for low-vision readers. Self-hosted (no CDN dependency --
-   this app needs to keep working on flaky venue wifi). Covers Latin
-   glyphs only: English words, digits, and dollar signs render in it;
-   the stack falls through per-character to the OS's own Korean/Chinese/
-   Cyrillic font for everything else, which is the correct behavior, not
-   a gap -- it means every number, regardless of which language is
-   selected, renders in the most legible face available. */
+/* iOS system visual language: grouped-table background, SF Pro via the
+   -apple-system stack (renders as real San Francisco on an actual
+   iPhone), iOS system colors. Atkinson Hyperlegible (Braille Institute,
+   designed for low-vision readers) stays queued as a fallback for
+   platforms without -apple-system, so accessibility isn't lost on
+   Android/desktop -- but on a real iPhone this now looks and reads like
+   a native iOS app, not a webfont. */
 @font-face {
   font-family: "Atkinson Hyperlegible";
   font-style: normal;
@@ -29,32 +28,29 @@
 }
 
 :root {
-  /* Palette: an airmail-envelope motif -- ink-navy and a sparing warm
-     coral accent, like the stripe border on international airmail mail,
-     on a paper ground. Semantic status colors are deliberately a
-     different hue family from both brand colors. */
-  --color-bg: #fbf9f5;
+  /* iOS system grouped background + system colors (light) */
+  --color-bg: #f2f2f7;
   --color-surface: #ffffff;
-  --color-ink: #1e2233;
-  --color-muted: #726a5c;
-  --color-border: #e6e0d2;
+  --color-ink: #000000;
+  --color-muted: #8e8e93;
+  --color-border: #c6c6c8;
+  --color-separator: #e3e3e8;
 
-  --color-primary: #27426f;
+  --color-primary: #007aff;
   --color-primary-text: #ffffff;
-  --color-accent: #b5542f;
 
-  --color-success-bg: #e4f3e8;
-  --color-success-text: #1f6b3d;
-  --color-warn-bg: #fbf1d9;
-  --color-warn-text: #8a5a00;
-  --color-danger: #b3271e;
-  --color-danger-bg: #fbeae7;
-  --color-neutral-bg: #efece3;
-  --color-neutral-text: #5a5445;
+  --color-success-bg: #e3f8e9;
+  --color-success-text: #248a3d;
+  --color-warn-bg: #fff2e0;
+  --color-warn-text: #c56000;
+  --color-danger: #ff3b30;
+  --color-danger-bg: #ffebe9;
+  --color-neutral-bg: #e5e5ea;
+  --color-neutral-text: #6e6e73;
 
   --font-ui:
-    "Atkinson Hyperlegible", -apple-system, BlinkMacSystemFont, "Malgun Gothic", "Apple SD Gothic Neo",
-    "PingFang SC", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "Atkinson Hyperlegible", "Malgun Gothic",
+    "Apple SD Gothic Neo", "PingFang SC", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 
   --font-size-xs: 15px;
   --font-size-sm: 17px;
@@ -63,56 +59,57 @@
   --font-size-xl: 36px;
 
   --space: 16px;
-  --radius-sm: 10px;
-  --radius-md: 16px;
+  --radius-sm: 12px;
+  --radius-md: 14px;
 }
 
 :root[data-theme="dark"] {
-  --color-bg: #15181f;
-  --color-surface: #1d212b;
-  --color-ink: #f1eee6;
-  --color-muted: #a8a296;
-  --color-border: #333848;
+  --color-bg: #000000;
+  --color-surface: #1c1c1e;
+  --color-ink: #ffffff;
+  --color-muted: #8e8e93;
+  --color-border: #38383a;
+  --color-separator: #2c2c2e;
 
-  --color-primary: #7fa0d9;
-  --color-primary-text: #0e1420;
-  --color-accent: #e08b68;
+  --color-primary: #0a84ff;
+  --color-primary-text: #ffffff;
 
-  --color-success-bg: #163828;
-  --color-success-text: #7fdba3;
-  --color-warn-bg: #3a2e0e;
-  --color-warn-text: #e8c05b;
-  --color-danger: #e2695c;
-  --color-danger-bg: #3a1512;
-  --color-neutral-bg: #262a35;
-  --color-neutral-text: #c9c4b8;
+  --color-success-bg: #0f2e1a;
+  --color-success-text: #30d158;
+  --color-warn-bg: #3a2608;
+  --color-warn-text: #ff9f0a;
+  --color-danger: #ff453a;
+  --color-danger-bg: #3a1210;
+  --color-neutral-bg: #2c2c2e;
+  --color-neutral-text: #aeaeb2;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --color-bg: #15181f;
-    --color-surface: #1d212b;
-    --color-ink: #f1eee6;
-    --color-muted: #a8a296;
-    --color-border: #333848;
+    --color-bg: #000000;
+    --color-surface: #1c1c1e;
+    --color-ink: #ffffff;
+    --color-muted: #8e8e93;
+    --color-border: #38383a;
+    --color-separator: #2c2c2e;
 
-    --color-primary: #7fa0d9;
-    --color-primary-text: #0e1420;
-    --color-accent: #e08b68;
+    --color-primary: #0a84ff;
+    --color-primary-text: #ffffff;
 
-    --color-success-bg: #163828;
-    --color-success-text: #7fdba3;
-    --color-warn-bg: #3a2e0e;
-    --color-warn-text: #e8c05b;
-    --color-danger: #e2695c;
-    --color-danger-bg: #3a1512;
-    --color-neutral-bg: #262a35;
-    --color-neutral-text: #c9c4b8;
+    --color-success-bg: #0f2e1a;
+    --color-success-text: #30d158;
+    --color-warn-bg: #3a2608;
+    --color-warn-text: #ff9f0a;
+    --color-danger: #ff453a;
+    --color-danger-bg: #3a1210;
+    --color-neutral-bg: #2c2c2e;
+    --color-neutral-text: #aeaeb2;
   }
 }
 
 * {
   box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
 }
 
 html,
@@ -128,7 +125,7 @@ body {
   color: var(--color-ink);
   font-family: var(--font-ui);
   font-size: var(--font-size-base);
-  line-height: 1.55;
+  line-height: 1.45;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -141,7 +138,7 @@ body {
     calc(var(--space) + env(safe-area-inset-bottom)) calc(var(--space) + env(safe-area-inset-left));
   display: flex;
   flex-direction: column;
-  gap: var(--space);
+  gap: 28px;
 }
 
 .app-header {
@@ -149,14 +146,26 @@ body {
   justify-content: space-between;
   align-items: center;
   min-height: 32px;
+  margin-bottom: -12px;
 }
 
 h1 {
   font-size: var(--font-size-xl);
   font-weight: 700;
-  letter-spacing: -0.01em;
-  margin: 0 0 8px;
+  letter-spacing: -0.02em;
+  margin: 0;
   text-wrap: balance;
+}
+
+/* iOS grouped-table section header: small, uppercase, muted -- sits
+   above a card, not a standalone heading. */
+h3 {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  margin: 0 0 6px 4px;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 h2 {
@@ -164,15 +173,6 @@ h2 {
   font-weight: 700;
   margin: 0 0 8px;
   text-wrap: balance;
-}
-
-h3 {
-  font-size: var(--font-size-sm);
-  font-weight: 700;
-  margin: 0 0 4px;
-  color: var(--color-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
 }
 
 p {
@@ -188,35 +188,19 @@ a {
   color: var(--color-primary);
 }
 
-/* A single, restrained brand mark -- three bars echoing an airmail
-   envelope's stripe border. Used once, under the wordmark on the entry
-   screens only -- not repeated as a decorative rail on every card. */
-.airmail-rule {
+.section {
   display: flex;
-  gap: 4px;
-  width: 64px;
-  height: 5px;
-  margin: 2px 0 var(--space);
-}
-.airmail-rule span {
-  flex: 1;
-  border-radius: 3px;
-}
-.airmail-rule span:nth-child(1),
-.airmail-rule span:nth-child(3) {
-  background: var(--color-primary);
-}
-.airmail-rule span:nth-child(2) {
-  background: var(--color-accent);
+  flex-direction: column;
+  gap: 2px;
 }
 
 .big-button {
   display: block;
   width: 100%;
-  padding: 19px 20px;
+  padding: 17px 20px;
   font-family: var(--font-ui);
   font-size: var(--font-size-lg);
-  font-weight: 700;
+  font-weight: 600;
   background: var(--color-primary);
   color: var(--color-primary-text);
   border: none;
@@ -224,18 +208,16 @@ a {
   cursor: pointer;
   text-align: center;
   text-decoration: none;
-  transition: transform 0.08s ease, opacity 0.08s ease;
+  transition: opacity 0.1s ease;
 }
 
 .big-button:active {
-  opacity: 0.85;
-  transform: scale(0.99);
+  opacity: 0.6;
 }
 
 .big-button.secondary {
   background: var(--color-surface);
   color: var(--color-primary);
-  border: 3px solid var(--color-primary);
 }
 
 .big-button.danger {
@@ -246,9 +228,6 @@ a {
   .big-button {
     transition: none;
   }
-  .big-button:active {
-    transform: none;
-  }
 }
 
 .big-button:focus-visible,
@@ -256,29 +235,32 @@ a {
 a:focus-visible,
 button:focus-visible,
 input:focus-visible {
-  outline: 3px solid var(--color-accent);
+  outline: 3px solid var(--color-primary);
   outline-offset: 2px;
 }
 
+/* iOS grouped-table card: white rounded container holding one or more
+   rows, each separated by an inset hairline (not full-width). */
 .card {
-  border: 1px solid var(--color-border);
+  border: none;
   border-radius: var(--radius-md);
   padding: var(--space);
   background: var(--color-surface);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.03);
 }
 
 .back-link {
   font-size: var(--font-size-base);
   color: var(--color-primary);
   text-decoration: none;
-  font-weight: 700;
+  font-weight: 400;
 }
 
 .badge {
   display: inline-block;
   padding: 4px 12px;
   border-radius: 999px;
-  font-weight: 700;
+  font-weight: 600;
   font-size: var(--font-size-xs);
   white-space: nowrap;
 }
@@ -315,8 +297,8 @@ input:focus-visible {
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--color-border);
+  padding: 10px 0;
+  border-bottom: 1px solid var(--color-separator);
   font-size: var(--font-size-sm);
 }
 
@@ -339,7 +321,6 @@ input:focus-visible {
 
 .flagged {
   background: var(--color-danger-bg);
-  border: 1px solid var(--color-danger);
   border-radius: var(--radius-md);
   padding: var(--space);
 }
@@ -347,14 +328,58 @@ input:focus-visible {
 .disclaimer {
   font-size: var(--font-size-xs);
   color: var(--color-muted);
-  border-top: 1px solid var(--color-border);
+  border-top: 1px solid var(--color-separator);
   padding-top: 8px;
   margin-top: 8px;
 }
 
 .lang-grid {
-  display: grid;
-  gap: 12px;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.lang-grid button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 16px 16px;
+  font-family: var(--font-ui);
+  font-size: var(--font-size-lg);
+  font-weight: 400;
+  color: var(--color-ink);
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--color-separator);
+  text-align: left;
+  cursor: pointer;
+}
+
+.lang-grid button:last-child {
+  border-bottom: none;
+}
+
+.lang-grid button::after {
+  content: "\203A";
+  color: var(--color-border);
+  font-size: 22px;
+  font-weight: 700;
+  margin-left: 8px;
+}
+
+.lang-grid button:active {
+  background: var(--color-neutral-bg);
+}
+
+/* iOS grouped list: a white rounded card containing rows, each row
+   separated by an inset hairline that doesn't touch the card edges. */
+.ios-list {
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  overflow: hidden;
 }
 
 .letter-list-item,
@@ -363,11 +388,14 @@ input:focus-visible {
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  padding: 14px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
+  padding: 14px 16px;
   background: var(--color-surface);
-  margin-bottom: 8px;
+  border-bottom: 1px solid var(--color-separator);
+}
+
+.ios-list .letter-list-item:last-child,
+.ios-list .reminder-item:last-child {
+  border-bottom: none;
 }
 
 .spinner-wrap {
@@ -395,7 +423,7 @@ input:focus-visible {
 
 .warning-line {
   color: var(--color-danger);
-  font-weight: 700;
+  font-weight: 600;
 }
 
 table.kv-table {
@@ -408,7 +436,7 @@ table.kv-table {
 
 table.kv-table td {
   padding: 6px 0;
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-separator);
 }
 
 table.kv-table td:first-child {
@@ -418,7 +446,7 @@ table.kv-table td:first-child {
 
 table.kv-table td:last-child {
   text-align: right;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 pre.letter-text {
@@ -429,6 +457,79 @@ pre.letter-text {
   color: var(--color-ink);
   border-radius: var(--radius-md);
   padding: var(--space);
+}
+
+/* iOS UISwitch-style toggle, built from a real checkbox for a11y. */
+.ios-switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+}
+
+.ios-switch-label {
+  font-size: var(--font-size-base);
+  flex: 1;
+}
+
+.ios-switch {
+  position: relative;
+  display: inline-block;
+  width: 56px;
+  height: 32px;
+  flex-shrink: 0;
+}
+
+.ios-switch input {
+  position: absolute;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  cursor: pointer;
+}
+
+.ios-switch-track {
+  position: absolute;
+  inset: 0;
+  background: var(--color-neutral-bg);
+  border-radius: 999px;
+  transition: background 0.15s ease;
+}
+
+.ios-switch input:checked ~ .ios-switch-track {
+  background: var(--color-success-text);
+}
+
+.ios-switch-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+  transition: transform 0.15s ease;
+}
+
+.ios-switch input:checked ~ .ios-switch-thumb {
+  transform: translateX(24px);
+}
+
+.ios-switch input:focus-visible ~ .ios-switch-track {
+  outline: 3px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ios-switch-track,
+  .ios-switch-thumb {
+    transition: none;
+  }
 }
 
 @media print {

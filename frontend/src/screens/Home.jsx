@@ -65,78 +65,84 @@ export default function Home() {
   return (
     <div className="app-shell">
       <h1>{t(language, "appName")}</h1>
-      <div className="airmail-rule" aria-hidden="true">
-        <span />
-        <span />
-        <span />
+
+      <div className="section">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          style={{ display: "none" }}
+          onChange={handleFileChange}
+        />
+        <BigButton onClick={() => fileInputRef.current?.click()}>
+          {uploading ? t(language, "uploading") : `\u{1F4F7} ${t(language, "takePhoto")}`}
+        </BigButton>
+        {error && <p style={{ color: "var(--color-danger)" }}>{error}</p>}
+
+        <BigButton to="/benefits" variant="secondary">
+          {t(language, "viewBenefits")}
+        </BigButton>
       </div>
 
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        style={{ display: "none" }}
-        onChange={handleFileChange}
-      />
-      <BigButton onClick={() => fileInputRef.current?.click()}>
-        {uploading ? t(language, "uploading") : `\u{1F4F7} ${t(language, "takePhoto")}`}
-      </BigButton>
-      {error && <p style={{ color: "var(--color-danger)" }}>{error}</p>}
-
-      <BigButton to="/benefits" variant="secondary">
-        {t(language, "viewBenefits")}
-      </BigButton>
-
-      <section>
-        <h2>{t(language, "upcomingDeadlines")}</h2>
-        {reminders.length === 0 && <p>{t(language, "noDeadlines")}</p>}
-        {reminders.map((r) => (
-          <div key={r.id} className="reminder-item">
-            <span>
-              {r.program}
-              {r.packet && (
-                <>
-                  {" "}
-                  &middot; {r.packet.satisfied_count}/{r.packet.total_count} {t(language, "documentsReady")}
-                </>
-              )}
-            </span>
-            <span>
-              {r.overdue ? t(language, "overdue") : `${r.days_until_deadline} ${t(language, "daysLeft")}`}
-            </span>
+      <div className="section">
+        <h3>{t(language, "upcomingDeadlines")}</h3>
+        {reminders.length === 0 ? (
+          <p>{t(language, "noDeadlines")}</p>
+        ) : (
+          <div className="ios-list">
+            {reminders.map((r) => (
+              <div key={r.id} className="reminder-item">
+                <span>
+                  {r.program}
+                  {r.packet && (
+                    <>
+                      {" "}
+                      &middot; {r.packet.satisfied_count}/{r.packet.total_count}{" "}
+                      {t(language, "documentsReady")}
+                    </>
+                  )}
+                </span>
+                <span>
+                  {r.overdue ? t(language, "overdue") : `${r.days_until_deadline} ${t(language, "daysLeft")}`}
+                </span>
+              </div>
+            ))}
           </div>
-        ))}
-      </section>
+        )}
+      </div>
 
-      <section className="card">
-        <label style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 20 }}>
-          <input
-            type="checkbox"
-            checked={onQmb}
-            onChange={handleQmbToggle}
-            disabled={qmbSaving}
-            style={{ width: 28, height: 28 }}
-          />
-          {t(language, "qmbToggleLabel")}
-        </label>
-        <p style={{ color: "var(--color-muted)", fontSize: "var(--font-size-xs)", margin: "8px 0 0" }}>
+      <div className="section">
+        <div className="ios-switch-row">
+          <span className="ios-switch-label">{t(language, "qmbToggleLabel")}</span>
+          <label className="ios-switch">
+            <input type="checkbox" checked={onQmb} onChange={handleQmbToggle} disabled={qmbSaving} />
+            <span className="ios-switch-track" />
+            <span className="ios-switch-thumb" />
+          </label>
+        </div>
+        <p style={{ color: "var(--color-muted)", fontSize: "var(--font-size-xs)", margin: "6px 0 0 4px" }}>
           {t(language, "qmbToggleHelp")}
         </p>
-      </section>
+      </div>
 
-      <section>
-        <h2>{t(language, "pastLetters")}</h2>
-        {letters.length === 0 && <p>{t(language, "noLettersYet")}</p>}
-        {letters.map((l) => (
-          <div key={l.id} className="letter-list-item">
-            <span>{LETTER_TYPE_LABEL[l.letter_type] || l.letter_type}</span>
-            <span style={{ color: "var(--color-muted)" }}>
-              {new Date(l.created_at).toLocaleDateString()}
-            </span>
+      <div className="section">
+        <h3>{t(language, "pastLetters")}</h3>
+        {letters.length === 0 ? (
+          <p>{t(language, "noLettersYet")}</p>
+        ) : (
+          <div className="ios-list">
+            {letters.map((l) => (
+              <div key={l.id} className="letter-list-item">
+                <span>{LETTER_TYPE_LABEL[l.letter_type] || l.letter_type}</span>
+                <span style={{ color: "var(--color-muted)" }}>
+                  {new Date(l.created_at).toLocaleDateString()}
+                </span>
+              </div>
+            ))}
           </div>
-        ))}
-      </section>
+        )}
+      </div>
     </div>
   );
 }

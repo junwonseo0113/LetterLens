@@ -23,7 +23,7 @@ export default function ApplicationPack() {
   return (
     <Layout title={t(language, "applicationPackTitle")} backTo="/benefits">
       <section>
-        <h2>{t(language, "checklist")}</h2>
+        <h3>{t(language, "checklist")}</h3>
         {reminders.length === 0 && <p>&mdash;</p>}
         {reminders.map((r) => (
           <div key={r.id} className="card" style={{ marginBottom: 12 }}>
@@ -49,9 +49,9 @@ export default function ApplicationPack() {
       </section>
 
       <section>
-        <h2>
+        <h3>
           {t(language, "english")} / {t(language, "translated")}
-        </h2>
+        </h3>
         {likelyPrograms.length === 0 && <p>&mdash;</p>}
         {likelyPrograms.map((b) => (
           <div key={b.program} className="card" style={{ marginBottom: 12 }}>
