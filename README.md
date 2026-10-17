@@ -77,18 +77,69 @@ Demo persona: Kim Soon-ja, 74, Flushing, Queens.
 
 ## OCI services used, and why
 
-| Service | Used for | Where |
+| Service | What it does | File : function |
 |---|---|---|
-| **OCI Document Understanding** | OCR + key-value extraction from the photographed letter | `app/docs/oci_client.py` (`_real_ocr`) |
-| **OCI Generative AI** | (1) classify letter type, (2) extract typed fields per a Pydantic schema with one retry on invalid JSON, (3) explain a letter / a benefits result in the user's language at a ~6th-grade reading level, (4) draft + translate the QMB dispute letter | `app/docs/oci_client.py`, `app/explain/oci_client.py`, `app/protect/oci_client.py`, via the shared `app/oci_genai.py` |
+| **OCI Document Understanding** | OCR + key-value extraction from the photographed letter | `app/docs/oci_client.py` : `_real_ocr` |
+| **OCI Generative AI** — classify | Labels the letter as `ssa_benefit_letter` / `bank_statement` / `hra_renewal_notice` / `medical_bill` / `medicare_notice` / `other` | `app/docs/oci_client.py` : `_real_classify` |
+| **OCI Generative AI** — extract | Extracts typed fields per a Pydantic schema for that letter type; one retry on invalid JSON before giving up | `app/docs/oci_client.py` : `_real_extract` |
+| **OCI Generative AI** — explain | Plain-language explanation of a letter, or of one benefits result, in the user's language at a ~6th-grade reading level | `app/docs/oci_client.py` : `_real_explain`; `app/explain/oci_client.py` : `_real_explain` |
+| **OCI Generative AI** — draft + translate | Drafts the QMB dispute letter and its side-by-side translation | `app/protect/oci_client.py` : `_real_english_letter`, `_real_translate` |
 | **OCI Speech** *(stretch, not built)* | Voice questions + read-aloud answers | — |
-| **Oracle Autonomous Database** *(stretch, not built)* | Swap-in for SQLite via the `oracledb` driver; `app/models.py`/`app/db.py` would be the only files touched | — |
+| **Oracle Autonomous Database** *(stretch, not built)* | Swap-in for SQLite via the `oracledb` driver; `app/models.py` / `app/db.py` would be the only files touched | — |
 
-Every real-mode OCI call above has a MOCK_MODE path, independently toggled
-by the `MOCK_MODE` env var, so the demo is never blocked by missing
-credentials or network access. The real-mode implementations follow the
-OCI Python SDK's documented shapes but are **unverified against a live
-tenancy** — treat them as a skeleton, not a tested path.
+Every real-mode call above shares one GenAI chat helper (`app/oci_genai.py`)
+and has a MOCK_MODE path, independently toggled by the `MOCK_MODE` env var,
+so the demo is never blocked by missing credentials or network access. The
+real-mode implementations follow the OCI Python SDK's documented shapes but
+are **unverified against a live tenancy** — treat them as a skeleton, not a
+tested path. `scripts/check_oci.py` (see Testing below) is the fastest
+way to find out which calls actually work once real credentials are set.
+
+### Proving it, not just claiming it
+
+The hard rule this whole project turns on is **the LLM never decides
+eligibility** — `app/rules/engine.py` does, in pure deterministic Python.
+That claim is checked at runtime, not just documented: `app/trace.py` times
+every step of both the document pipeline and the benefits check and labels
+each one with the OCI service that handled it, or `Rules engine (no AI)`
+when it didn't touch AI at all. The frontend renders this as a collapsible
+"How this was processed" panel (`frontend/src/components/TracePanel.jsx`)
+on the Letter Result and Benefits Found screens — a judge can expand it and
+see "Checked eligibility → Rules engine (no AI)" sitting right next to the
+OCI-labeled steps, in the running app, not just in this README.
+
+```mermaid
+sequenceDiagram
+    participant U as User (phone/browser)
+    participant API as FastAPI
+    participant DOC as OCI Document Understanding
+    participant AI as OCI Generative AI
+    participant R as Rules engine (no AI)
+
+    U->>API: POST /letters (photo, language)
+    API->>DOC: analyze_document()
+    DOC-->>API: raw text + key-values
+    API->>AI: classify_letter(raw text)
+    AI-->>API: letter_type
+    API->>AI: extract_fields(raw text, schema)
+    AI-->>API: typed fields (Pydantic-validated)
+    API->>AI: explain_letter(fields, language)
+    AI-->>API: plain-language explanation
+    API-->>U: explanation + action items + trace
+
+    U->>API: GET /benefits
+    API->>R: evaluate(profile)
+    R-->>API: ProgramResult[] (status, numbers, rule applied)
+    API->>AI: explain_results(ProgramResult[], language)
+    AI-->>API: per-program explanation + myth-busting
+    API-->>U: benefits found + trace
+```
+
+**Privacy**: the raw photographed image never touches disk or the
+database — it's read into memory, passed to Document Understanding, and
+discarded once extraction finishes (see the hard rules above). No
+individual government records are looked up anywhere in this flow; the
+rules engine only ever sees what the user uploaded or typed.
 
 ## Project layout
 
@@ -157,9 +208,14 @@ Never commit `.env` or `.env.local` — both are gitignored.
 ## Running the tests
 
 ```bash
-python3 -m pytest -q          # 42 tests: pure functions + FastAPI TestClient, no servers needed
+python3 -m pytest -q          # 52 tests: pure functions + FastAPI TestClient, no servers needed, MOCK_MODE only
 cd frontend && npm run build && npm run lint
 ```
+
+If you intend to demo with `MOCK_MODE=false`, run `python3 scripts/check_oci.py`
+first (with real OCI credentials set) -- it calls OCI Document Understanding
+and OCI Generative AI once each and prints OK/FAIL, so a broken credential
+or region surfaces before you're on stage, not during.
 
 ## Running the demo
 
@@ -216,4 +272,6 @@ fast-forward-merged into `main`:
 
 `m1-rules-engine` -> `m2-tests` -> `m3-document-pipeline` ->
 `m4-explanation-layer` -> `m5-keep-protect` -> `m7-demo-fixtures` ->
-`m6-frontend` -> `docs-readme`
+`m6-frontend` -> `docs-readme` -> `fix-limits-verification` ->
+`packet-readiness` -> `ios-pwa` -> `qmb-toggle` -> `demo-script` ->
+`design-refresh` -> `oci-trace`
