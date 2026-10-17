@@ -1,29 +1,113 @@
+/* Atkinson Hyperlegible -- designed by the Braille Institute for maximum
+   legibility for low-vision readers. Self-hosted (no CDN dependency --
+   this app needs to keep working on flaky venue wifi). Covers Latin
+   glyphs only: English words, digits, and dollar signs render in it;
+   the stack falls through per-character to the OS's own Korean/Chinese/
+   Cyrillic font for everything else, which is the correct behavior, not
+   a gap -- it means every number, regardless of which language is
+   selected, renders in the most legible face available. */
+@font-face {
+  font-family: "Atkinson Hyperlegible";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/AtkinsonHyperlegible-Regular.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Atkinson Hyperlegible";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/AtkinsonHyperlegible-Bold.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Atkinson Hyperlegible";
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/AtkinsonHyperlegible-Italic.woff2") format("woff2");
+}
+
 :root {
-  --color-bg: #ffffff;
-  --color-text: #111111;
-  --color-primary: #0b5fff;
+  /* Palette: an airmail-envelope motif -- ink-navy and a sparing warm
+     coral accent, like the stripe border on international airmail mail,
+     on a paper ground. Semantic status colors are deliberately a
+     different hue family from both brand colors. */
+  --color-bg: #fbf9f5;
+  --color-surface: #ffffff;
+  --color-ink: #1e2233;
+  --color-muted: #726a5c;
+  --color-border: #e6e0d2;
+
+  --color-primary: #27426f;
   --color-primary-text: #ffffff;
-  --color-border: #d0d0d0;
-  --color-danger: #b00020;
-  --color-danger-bg: #fdecea;
-  --color-success-bg: #e8f5e9;
-  --color-success-text: #1b5e20;
-  --color-warn-bg: #fff8e1;
-  --color-warn-text: #8a6400;
-  --color-muted: #555555;
+  --color-accent: #b5542f;
+
+  --color-success-bg: #e4f3e8;
+  --color-success-text: #1f6b3d;
+  --color-warn-bg: #fbf1d9;
+  --color-warn-text: #8a5a00;
+  --color-danger: #b3271e;
+  --color-danger-bg: #fbeae7;
+  --color-neutral-bg: #efece3;
+  --color-neutral-text: #5a5445;
+
+  --font-ui:
+    "Atkinson Hyperlegible", -apple-system, BlinkMacSystemFont, "Malgun Gothic", "Apple SD Gothic Neo",
+    "PingFang SC", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  --font-size-xs: 15px;
+  --font-size-sm: 17px;
   --font-size-base: 20px;
   --font-size-lg: 26px;
-  --font-size-xl: 34px;
+  --font-size-xl: 36px;
+
   --space: 16px;
-  --radius: 14px;
+  --radius-sm: 10px;
+  --radius-md: 16px;
+}
+
+:root[data-theme="dark"] {
+  --color-bg: #15181f;
+  --color-surface: #1d212b;
+  --color-ink: #f1eee6;
+  --color-muted: #a8a296;
+  --color-border: #333848;
+
+  --color-primary: #7fa0d9;
+  --color-primary-text: #0e1420;
+  --color-accent: #e08b68;
+
+  --color-success-bg: #163828;
+  --color-success-text: #7fdba3;
+  --color-warn-bg: #3a2e0e;
+  --color-warn-text: #e8c05b;
+  --color-danger: #e2695c;
+  --color-danger-bg: #3a1512;
+  --color-neutral-bg: #262a35;
+  --color-neutral-text: #c9c4b8;
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
-    --color-bg: #121212;
-    --color-text: #f5f5f5;
-    --color-border: #3a3a3a;
-    --color-muted: #aaaaaa;
+  :root:not([data-theme="light"]) {
+    --color-bg: #15181f;
+    --color-surface: #1d212b;
+    --color-ink: #f1eee6;
+    --color-muted: #a8a296;
+    --color-border: #333848;
+
+    --color-primary: #7fa0d9;
+    --color-primary-text: #0e1420;
+    --color-accent: #e08b68;
+
+    --color-success-bg: #163828;
+    --color-success-text: #7fdba3;
+    --color-warn-bg: #3a2e0e;
+    --color-warn-text: #e8c05b;
+    --color-danger: #e2695c;
+    --color-danger-bg: #3a1512;
+    --color-neutral-bg: #262a35;
+    --color-neutral-text: #c9c4b8;
   }
 }
 
@@ -41,11 +125,11 @@ body,
 
 body {
   background: var(--color-bg);
-  color: var(--color-text);
-  font-family:
-    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  color: var(--color-ink);
+  font-family: var(--font-ui);
   font-size: var(--font-size-base);
-  line-height: 1.5;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
 }
 
 .app-shell {
@@ -69,39 +153,87 @@ body {
 
 h1 {
   font-size: var(--font-size-xl);
+  font-weight: 700;
+  letter-spacing: -0.01em;
   margin: 0 0 8px;
+  text-wrap: balance;
 }
 
 h2 {
   font-size: var(--font-size-lg);
+  font-weight: 700;
+  margin: 0 0 8px;
+  text-wrap: balance;
+}
+
+h3 {
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  margin: 0 0 4px;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+p {
   margin: 0 0 8px;
 }
 
 ul {
   padding-left: 1.3em;
+  margin: 0 0 8px;
+}
+
+a {
+  color: var(--color-primary);
+}
+
+/* A single, restrained brand mark -- three bars echoing an airmail
+   envelope's stripe border. Used once, under the wordmark on the entry
+   screens only -- not repeated as a decorative rail on every card. */
+.airmail-rule {
+  display: flex;
+  gap: 4px;
+  width: 64px;
+  height: 5px;
+  margin: 2px 0 var(--space);
+}
+.airmail-rule span {
+  flex: 1;
+  border-radius: 3px;
+}
+.airmail-rule span:nth-child(1),
+.airmail-rule span:nth-child(3) {
+  background: var(--color-primary);
+}
+.airmail-rule span:nth-child(2) {
+  background: var(--color-accent);
 }
 
 .big-button {
   display: block;
   width: 100%;
-  padding: 20px;
+  padding: 19px 20px;
+  font-family: var(--font-ui);
   font-size: var(--font-size-lg);
   font-weight: 700;
   background: var(--color-primary);
   color: var(--color-primary-text);
   border: none;
-  border-radius: var(--radius);
+  border-radius: var(--radius-sm);
   cursor: pointer;
   text-align: center;
   text-decoration: none;
+  transition: transform 0.08s ease, opacity 0.08s ease;
 }
 
 .big-button:active {
   opacity: 0.85;
+  transform: scale(0.99);
 }
 
 .big-button.secondary {
-  background: var(--color-bg);
+  background: var(--color-surface);
   color: var(--color-primary);
   border: 3px solid var(--color-primary);
 }
@@ -110,18 +242,36 @@ ul {
   background: var(--color-danger);
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .big-button {
+    transition: none;
+  }
+  .big-button:active {
+    transform: none;
+  }
+}
+
+.big-button:focus-visible,
+.back-link:focus-visible,
+a:focus-visible,
+button:focus-visible,
+input:focus-visible {
+  outline: 3px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
 .card {
-  border: 2px solid var(--color-border);
-  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
   padding: var(--space);
-  background: var(--color-bg);
+  background: var(--color-surface);
 }
 
 .back-link {
   font-size: var(--font-size-base);
   color: var(--color-primary);
   text-decoration: none;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .badge {
@@ -129,7 +279,7 @@ ul {
   padding: 4px 12px;
   border-radius: 999px;
   font-weight: 700;
-  font-size: 16px;
+  font-size: var(--font-size-xs);
   white-space: nowrap;
 }
 
@@ -146,19 +296,19 @@ ul {
 
 .badge.not_now,
 .badge.missing_info {
-  background: #f1f1f1;
-  color: #555;
+  background: var(--color-neutral-bg);
+  color: var(--color-neutral-text);
 }
 
 .flagged {
   background: var(--color-danger-bg);
-  border: 2px solid var(--color-danger);
-  border-radius: var(--radius);
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius-md);
   padding: var(--space);
 }
 
 .disclaimer {
-  font-size: 16px;
+  font-size: var(--font-size-xs);
   color: var(--color-muted);
   border-top: 1px solid var(--color-border);
   padding-top: 8px;
@@ -175,9 +325,11 @@ ul {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px;
+  gap: 12px;
+  padding: 14px;
   border: 1px solid var(--color-border);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
   margin-bottom: 8px;
 }
 
@@ -185,6 +337,7 @@ ul {
   text-align: center;
   padding: 40px 0;
   font-size: var(--font-size-lg);
+  color: var(--color-muted);
 }
 
 .benefit-card + .benefit-card {
@@ -205,17 +358,19 @@ ul {
 
 .warning-line {
   color: var(--color-danger);
+  font-weight: 700;
 }
 
 table.kv-table {
   width: 100%;
-  font-size: 16px;
+  font-size: var(--font-size-sm);
   margin-top: 8px;
   border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
 }
 
 table.kv-table td {
-  padding: 4px 0;
+  padding: 6px 0;
   border-bottom: 1px solid var(--color-border);
 }
 
@@ -224,12 +379,18 @@ table.kv-table td:first-child {
   padding-right: 12px;
 }
 
+table.kv-table td:last-child {
+  text-align: right;
+  font-weight: 700;
+}
+
 pre.letter-text {
   white-space: pre-wrap;
-  font-family: inherit;
-  font-size: 18px;
-  background: color-mix(in srgb, var(--color-bg) 92%, var(--color-text) 8%);
-  border-radius: var(--radius);
+  font-family: var(--font-ui);
+  font-size: var(--font-size-sm);
+  background: var(--color-neutral-bg);
+  color: var(--color-ink);
+  border-radius: var(--radius-md);
   padding: var(--space);
 }
 
@@ -240,5 +401,10 @@ pre.letter-text {
 
   .app-shell {
     max-width: 100%;
+  }
+
+  body {
+    color: #000;
+    background: #fff;
   }
 }

@@ -65,6 +65,11 @@ export default function Home() {
   return (
     <div className="app-shell">
       <h1>{t(language, "appName")}</h1>
+      <div className="airmail-rule" aria-hidden="true">
+        <span />
+        <span />
+        <span />
+      </div>
 
       <input
         ref={fileInputRef}
@@ -115,7 +120,7 @@ export default function Home() {
           />
           {t(language, "qmbToggleLabel")}
         </label>
-        <p style={{ color: "var(--color-muted)", fontSize: 16, margin: "8px 0 0" }}>
+        <p style={{ color: "var(--color-muted)", fontSize: "var(--font-size-xs)", margin: "8px 0 0" }}>
           {t(language, "qmbToggleHelp")}
         </p>
       </section>

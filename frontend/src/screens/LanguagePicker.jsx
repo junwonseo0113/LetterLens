@@ -14,7 +14,12 @@ export default function LanguagePicker() {
   return (
     <div className="app-shell">
       <h1>LetterLens</h1>
-      <p style={{ fontSize: 22 }}>{t(language || "en", "chooseLanguage")}</p>
+      <div className="airmail-rule" aria-hidden="true">
+        <span />
+        <span />
+        <span />
+      </div>
+      <p style={{ fontSize: "var(--font-size-sm)" }}>{t(language || "en", "chooseLanguage")}</p>
       <div className="lang-grid">
         {LANGUAGES.map((l) => (
           <button
