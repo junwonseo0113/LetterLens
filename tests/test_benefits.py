@@ -29,12 +29,14 @@ def test_benefits_for_unknown_user_returns_defaults():
     response = client.get("/benefits", params={"user_id": "nobody"})
     assert response.status_code == 200
     body = response.json()
-    programs = {b["program"] for b in body}
+    results = body["results"]
+
+    programs = {b["program"] for b in results}
     assert programs == {"MSP", "Extra Help", "SNAP"}
 
-    msp = next(b for b in body if b["program"] == "MSP")
-    extra_help = next(b for b in body if b["program"] == "Extra Help")
-    snap = next(b for b in body if b["program"] == "SNAP")
+    msp = next(b for b in results if b["program"] == "MSP")
+    extra_help = next(b for b in results if b["program"] == "Extra Help")
+    snap = next(b for b in results if b["program"] == "SNAP")
 
     # No Medicare on file -> MSP/Extra Help can't apply yet.
     assert msp["status"] == "not_now"
@@ -42,17 +44,17 @@ def test_benefits_for_unknown_user_returns_defaults():
     # Zero income household is correctly SNAP-likely (gross $0 <= 200% FPL).
     assert snap["status"] == "likely"
 
-    for item in body:
+    for item in results:
         assert item["disclaimer"] == "Final decision is made by NY State / HRA / SSA, not this app."
 
 
 def test_benefits_reflects_uploaded_ssa_letter():
     _upload("ssa_sample.jpg")
     response = client.get("/benefits", params={"user_id": "demo"})
-    body = response.json()
+    results = response.json()["results"]
 
-    qmb = next(b for b in body if b["program"] == "QMB")
-    extra_help = next(b for b in body if b["program"] == "Extra Help")
+    qmb = next(b for b in results if b["program"] == "QMB")
+    extra_help = next(b for b in results if b["program"] == "Extra Help")
 
     assert qmb["status"] == "likely"
     assert extra_help["status"] == "likely"
@@ -63,5 +65,21 @@ def test_benefits_reflects_uploaded_ssa_letter():
 def test_benefits_language_param_passed_through():
     _upload("ssa_sample.jpg")
     response = client.get("/benefits", params={"user_id": "demo", "language": "ko"})
-    body = response.json()
-    assert all("MOCK_MODE" in b["explanation"] for b in body)
+    results = response.json()["results"]
+    assert all("MOCK_MODE" in b["explanation"] for b in results)
+
+
+def test_benefits_trace_shows_rules_engine_not_ai_for_eligibility():
+    _upload("ssa_sample.jpg")
+    response = client.get("/benefits", params={"user_id": "demo"})
+    trace = response.json()["trace"]
+
+    step_names = [s["name"] for s in trace]
+    assert "Checked eligibility" in step_names
+
+    eligibility_step = next(s for s in trace if s["name"] == "Checked eligibility")
+    assert eligibility_step["service"] == "Rules engine (no AI)"
+    assert eligibility_step["success"] is True
+
+    explain_step = next(s for s in trace if s["name"] == "Explained each result")
+    assert "OCI Generative AI" in explain_step["service"]

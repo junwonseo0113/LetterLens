@@ -6,11 +6,14 @@ app.explain.explain_results.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from sqlmodel import Session
 
 from app.explain import ExplainedProgramResult, explain_results
 from app.models import ProfileRecord
 from app.rules.engine import Profile, evaluate
+from app.trace import Trace, mock_suffix, trace_to_out, TraceStepOut
 
 
 def profile_record_to_profile(record: ProfileRecord) -> Profile:
@@ -36,8 +39,21 @@ def profile_record_to_profile(record: ProfileRecord) -> Profile:
     )
 
 
-def get_benefits(session: Session, user_id: str, language: str) -> list[ExplainedProgramResult]:
+@dataclass
+class BenefitsResult:
+    results: list[ExplainedProgramResult]
+    trace: list[TraceStepOut]
+
+
+def get_benefits(session: Session, user_id: str, language: str) -> BenefitsResult:
+    trace = Trace()
     record = session.get(ProfileRecord, user_id)
     profile = profile_record_to_profile(record) if record else Profile()
-    results = evaluate(profile)
-    return explain_results(results, profile, language)
+
+    with trace.step("Checked eligibility", "Rules engine (no AI)"):
+        results = evaluate(profile)
+
+    with trace.step("Explained each result", f"OCI Generative AI{mock_suffix()}"):
+        explained = explain_results(results, profile, language)
+
+    return BenefitsResult(results=explained, trace=trace_to_out(trace))

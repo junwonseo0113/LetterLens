@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import BigButton from "../components/BigButton";
 import Layout from "../components/Layout";
+import TracePanel from "../components/TracePanel";
 import { useLanguage } from "../context/LanguageContext";
 import { t } from "../strings";
 
@@ -49,6 +50,8 @@ export default function LetterResult() {
       )}
 
       <BigButton to="/benefits">{t(language, "viewBenefits")}</BigButton>
+
+      <TracePanel trace={result.trace} />
     </Layout>
   );
 }

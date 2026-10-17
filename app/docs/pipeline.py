@@ -15,6 +15,7 @@ from app.keep.reminders import create_reminder, to_reminder_out
 from app.models import LetterRecord, ProfileRecord
 from app.protect.bill_check import check_qmb_bill
 from app.protect.oci_client import draft_dispute_letter
+from app.trace import Trace, mock_suffix, trace_to_out
 
 from . import oci_client
 from .profile_merge import merge_fields_into_profile
@@ -64,28 +65,38 @@ def _action_items_and_deadline(letter_type: LetterType, fields: dict) -> tuple[l
 def process_letter(
     *, session: Session, image_bytes: bytes, filename: str, language: str, user_id: str
 ) -> LetterUploadResponse:
-    ocr = oci_client.ocr_document(image_bytes, filename)
-    letter_type = oci_client.classify_letter(ocr.raw_text)
+    trace = Trace()
+    doc_service = f"OCI Document Understanding{mock_suffix()}"
+    genai_service = f"OCI Generative AI{mock_suffix()}"
+
+    with trace.step("Read the letter", doc_service):
+        ocr = oci_client.ocr_document(image_bytes, filename)
+
+    with trace.step("Identified the letter type", genai_service):
+        letter_type = oci_client.classify_letter(ocr.raw_text)
     schema = SCHEMA_BY_TYPE[letter_type]
 
-    raw_fields = oci_client.extract_fields(letter_type, ocr.raw_text, ocr.key_values)
-    try:
-        validated = schema.model_validate(raw_fields)
-    except Exception:
-        raw_fields = oci_client.extract_fields(
-            letter_type, ocr.raw_text, ocr.key_values, retry_after_invalid=True
-        )
+    with trace.step("Extracted the details", genai_service):
+        raw_fields = oci_client.extract_fields(letter_type, ocr.raw_text, ocr.key_values)
         try:
             validated = schema.model_validate(raw_fields)
-        except Exception as exc:
-            raise ExtractionError(
-                f"Could not extract valid {letter_type.value} fields after retry"
-            ) from exc
+        except Exception:
+            raw_fields = oci_client.extract_fields(
+                letter_type, ocr.raw_text, ocr.key_values, retry_after_invalid=True
+            )
+            try:
+                validated = schema.model_validate(raw_fields)
+            except Exception as exc:
+                raise ExtractionError(
+                    f"Could not extract valid {letter_type.value} fields after retry"
+                ) from exc
 
     fields = validated.model_dump(mode="json")
 
     action_items, deadline = _action_items_and_deadline(letter_type, fields)
-    explanation = oci_client.explain_letter(letter_type, fields, language)
+
+    with trace.step("Explained it in your language", genai_service):
+        explanation = oci_client.explain_letter(letter_type, fields, language)
 
     letter_record = LetterRecord(user_id=user_id, letter_type=letter_type.value, extracted_fields=fields)
     session.add(letter_record)
@@ -133,4 +144,5 @@ def process_letter(
         profile_fields_updated=updated_fields,
         reminder=reminder_out,
         bill_check=bill_check_out,
+        trace=trace_to_out(trace),
     )

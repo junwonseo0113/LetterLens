@@ -12,7 +12,9 @@ export default function CaseworkerCard() {
   const [benefits, setBenefits] = useState([]);
 
   useEffect(() => {
-    fetchBenefits(USER_ID, language || "en").then(setBenefits).catch(() => {});
+    fetchBenefits(USER_ID, language || "en")
+      .then((data) => setBenefits(data.results))
+      .catch(() => {});
   }, [language]);
 
   return (

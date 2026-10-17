@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 
 from app.keep.schemas import ReminderOut
 from app.protect.schemas import BillCheckResult
+from app.trace import TraceStepOut
 
 
 class LetterType(str, Enum):
@@ -91,6 +92,7 @@ class LetterUploadResponse(BaseModel):
     profile_fields_updated: list[str]
     reminder: ReminderOut | None = None
     bill_check: BillCheckResult | None = None
+    trace: list[TraceStepOut] = []
 
 
 class LetterSummary(BaseModel):

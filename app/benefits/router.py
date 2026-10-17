@@ -4,18 +4,17 @@ from fastapi import APIRouter, Depends, Query
 from sqlmodel import Session
 
 from app.db import get_session
-from app.explain import ExplainedProgramResult
 from app.models import ProfileRecord
 
-from .service import get_benefits
+from .service import BenefitsResult, get_benefits
 
 router = APIRouter()
 
 
-@router.get("/benefits", response_model=list[ExplainedProgramResult])
+@router.get("/benefits", response_model=BenefitsResult)
 def list_benefits(
     user_id: str = Query("demo"), language: str = Query("en"), session: Session = Depends(get_session)
-) -> list[ExplainedProgramResult]:
+) -> BenefitsResult:
     return get_benefits(session, user_id, language)
 
 

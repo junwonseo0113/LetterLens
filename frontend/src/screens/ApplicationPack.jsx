@@ -13,7 +13,9 @@ export default function ApplicationPack() {
 
   useEffect(() => {
     fetchReminders(USER_ID).then(setReminders).catch(() => {});
-    fetchBenefits(USER_ID, language || "en").then(setBenefits).catch(() => {});
+    fetchBenefits(USER_ID, language || "en")
+      .then((data) => setBenefits(data.results))
+      .catch(() => {});
   }, [language]);
 
   const likelyPrograms = benefits.filter((b) => b.status === "likely" || b.status === "possible");

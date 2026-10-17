@@ -300,6 +300,43 @@ input:focus-visible {
   color: var(--color-neutral-text);
 }
 
+.badge.no-ai {
+  background: var(--color-success-bg);
+  color: var(--color-success-text);
+}
+
+.badge.ai {
+  background: var(--color-neutral-bg);
+  color: var(--color-neutral-text);
+}
+
+.trace-step {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--color-border);
+  font-size: var(--font-size-sm);
+}
+
+.trace-step:last-child {
+  border-bottom: none;
+}
+
+.trace-step-meta {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.trace-step-duration {
+  display: block;
+  color: var(--color-muted);
+  font-size: var(--font-size-xs);
+  font-variant-numeric: tabular-nums;
+  margin-top: 2px;
+}
+
 .flagged {
   background: var(--color-danger-bg);
   border: 1px solid var(--color-danger);

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import BigButton from "../components/BigButton";
 import Layout from "../components/Layout";
+import TracePanel from "../components/TracePanel";
 import { useLanguage } from "../context/LanguageContext";
 import { STATUS_KEY, t } from "../strings";
 import { formatMoney } from "../format";
@@ -11,12 +12,16 @@ const USER_ID = "demo";
 export default function BenefitsFound() {
   const { language } = useLanguage();
   const [benefits, setBenefits] = useState([]);
+  const [trace, setTrace] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setLoading(true);
     fetchBenefits(USER_ID, language || "en")
-      .then(setBenefits)
+      .then((data) => {
+        setBenefits(data.results);
+        setTrace(data.trace);
+      })
       .finally(() => setLoading(false));
   }, [language]);
 
@@ -83,6 +88,8 @@ export default function BenefitsFound() {
       <BigButton to="/caseworker-card" variant="secondary">
         {t(language, "seeCaseworkerCard")}
       </BigButton>
+
+      <TracePanel trace={trace} />
     </Layout>
   );
 }

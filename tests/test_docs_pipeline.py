@@ -38,6 +38,22 @@ def test_ssa_benefit_letter_extraction_and_profile_merge():
     assert body["explanation"]
 
 
+def test_upload_trace_shows_ocr_and_genai_steps_in_order():
+    response = _upload("ssa_sample.jpg")
+    trace = response.json()["trace"]
+
+    assert [s["name"] for s in trace] == [
+        "Read the letter",
+        "Identified the letter type",
+        "Extracted the details",
+        "Explained it in your language",
+    ]
+    assert trace[0]["service"] == "OCI Document Understanding (mock)"
+    assert all(s["service"] == "OCI Generative AI (mock)" for s in trace[1:])
+    assert all(s["success"] is True for s in trace)
+    assert all(s["duration_ms"] >= 0 for s in trace)
+
+
 def test_bank_statement_sets_savings():
     response = _upload("bank_sample.jpg")
     body = response.json()
