@@ -36,6 +36,7 @@ class ProfileRecord(SQLModel, table=True):
 
     savings: float = 0.0
     household_size: int = 1
+    owns_home: bool = False
 
     # field_name -> letter_id that most recently set it
     field_sources: dict = Field(default_factory=dict, sa_column=Column(JSON))

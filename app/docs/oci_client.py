@@ -15,12 +15,12 @@ from __future__ import annotations
 
 import json
 import os
-import re
 from dataclasses import dataclass
 
-from .schemas import SCHEMA_BY_TYPE, LetterType
+from app.number_guard import assert_numbers_preserved
+from app.oci_genai import genai_chat, oci_config
 
-_NUMBER_RE = re.compile(r"\d[\d,]*\.?\d*")
+from .schemas import SCHEMA_BY_TYPE, LetterType
 
 
 def _mock_mode() -> bool:
@@ -159,14 +159,6 @@ def _mock_explain(letter_type: LetterType, fields: dict, language: str) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _oci_config():
-    import oci
-
-    config_path = os.environ.get("OCI_CONFIG_PATH", "~/.oci/config")
-    profile = os.environ.get("OCI_CONFIG_PROFILE", "DEFAULT")
-    return oci.config.from_file(file_location=config_path, profile_name=profile)
-
-
 def _real_ocr(image_bytes: bytes) -> OcrResult:
     import base64
 
@@ -178,7 +170,7 @@ def _real_ocr(image_bytes: bytes) -> OcrResult:
         InlineDocumentDetails,
     )
 
-    config = _oci_config()
+    config = oci_config()
     client = oci.ai_document.AIServiceDocumentClient(config)
     details = AnalyzeDocumentDetails(
         document=InlineDocumentDetails(data=base64.b64encode(image_bytes).decode("utf-8")),
@@ -197,29 +189,13 @@ def _real_ocr(image_bytes: bytes) -> OcrResult:
     return OcrResult(raw_text=raw_text, key_values=key_values)
 
 
-def _genai_chat(prompt: str) -> str:
-    import oci
-    from oci.generative_ai_inference.models import ChatDetails, CohereChatRequest, OnDemandServingMode
-
-    config = _oci_config()
-    client = oci.generative_ai_inference.GenerativeAiInferenceClient(config)
-    chat_request = CohereChatRequest(message=prompt, max_tokens=600, temperature=0.2)
-    details = ChatDetails(
-        compartment_id=os.environ["OCI_COMPARTMENT_ID"],
-        serving_mode=OnDemandServingMode(model_id=os.environ["OCI_GENAI_MODEL_ID"]),
-        chat_request=chat_request,
-    )
-    response = client.chat(details)
-    return response.data.chat_response.text
-
-
 def _real_classify(raw_text: str) -> LetterType:
     prompt = (
         "Classify this letter into exactly one label: ssa_benefit_letter, "
         "bank_statement, medicare_notice, hra_renewal_notice, medical_bill, other. "
         "Reply with only the label.\n\nLetter text:\n" + raw_text
     )
-    label = _genai_chat(prompt).strip().lower()
+    label = genai_chat(prompt).strip().lower()
     try:
         return LetterType(label)
     except ValueError:
@@ -238,18 +214,8 @@ def _real_extract(letter_type: LetterType, raw_text: str, key_values: dict, retr
         f"{schema.model_json_schema()}. Do not invent values not present in the text. "
         f"Letter text:\n{raw_text}\n\nKey-values already extracted: {key_values}"
     )
-    output = _genai_chat(prompt)
+    output = genai_chat(prompt)
     return json.loads(output)
-
-
-def _numbers_in(text: str) -> set[str]:
-    return {m.replace(",", "") for m in _NUMBER_RE.findall(text)}
-
-
-def _assert_numbers_preserved(output_text: str, source_text: str) -> None:
-    unknown = _numbers_in(output_text) - _numbers_in(source_text)
-    if unknown:
-        raise ValueError(f"GenAI explanation introduced numbers not present in source data: {unknown}")
 
 
 def _real_explain(letter_type: LetterType, fields: dict, language: str) -> str:
@@ -259,8 +225,8 @@ def _real_explain(letter_type: LetterType, fields: dict, language: str) -> str:
         "in 2-4 short sentences. Never change any number, date, dollar amount, or program name -- "
         f"keep official English program names in parentheses. Data: {source_text}"
     )
-    output = _genai_chat(prompt)
-    _assert_numbers_preserved(output, source_text)
+    output = genai_chat(prompt)
+    assert_numbers_preserved(output, source_text)
     return output
 
 

@@ -56,6 +56,7 @@ class Profile:
 
     savings: float = 0.0
     household_size: int = 1
+    owns_home: bool = False
 
 
 @dataclass
