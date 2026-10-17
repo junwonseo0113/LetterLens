@@ -104,17 +104,41 @@ EXTRA_HELP_RESOURCE_LIMIT_COUPLE = Limit(
 )
 
 # --- SNAP (household with a member age 60+) ---
+# IMPORTANT, confirmed 2026-10-17 directly from fns.usda.gov/snap/recipient/
+# eligibility and 7 CFR 273.9 (via eCFR): under FEDERAL law, a household
+# with an elderly (60+) or disabled member is exempt from the gross income
+# test entirely and only has to meet the net income test. The federal
+# baseline gross test (130% FPL) is not used here at all -- what this
+# engine applies instead is NY's broad-based categorical eligibility
+# (BBCE) gross threshold, which several independent secondary sources
+# (NY Health Access, snapguideny.org, OTDA-citing aggregators) consistently
+# report as 200% FPL for NY. otda.ny.gov itself refused every automated
+# fetch attempt (connection reset) so that specific NY figure is still
+# NOT confirmed against a primary .gov source -- re-verify it manually
+# before the demo. This engine's two-tier design (200% gross -> likely,
+# else 100% net + asset test -> possible) is a deliberate simplification
+# of the real rule for this app's elderly-only user base; it will not
+# produce false "likely" results, but the asset-limit fallback may be
+# stricter than NY's actual rule, since BBCE eliminates the asset test
+# for most applicants (not modeled here -- see app/rules/engine.py).
 SNAP_GROSS_INCOME_PCT_FPL = Limit(
     value=200,
     year=2026,
-    source_url="https://www.fns.usda.gov/snap/allotment/COLA",
-    note="VERIFY_BEFORE_DEMO - percent of FPL, not a dollar limit",
+    source_url="https://otda.ny.gov/programs/snap/",
+    note=(
+        "NOT directly confirmed -- otda.ny.gov blocked automated fetches "
+        "2026-10-17. Corroborated only by secondary sources. VERIFY_BEFORE_DEMO."
+    ),
 )
 SNAP_NET_INCOME_PCT_FPL = Limit(
     value=100,
     year=2026,
-    source_url="https://www.fns.usda.gov/snap/allotment/COLA",
-    note="VERIFY_BEFORE_DEMO - percent of FPL, not a dollar limit",
+    source_url="https://www.fns.usda.gov/snap/recipient/eligibility",
+    note=(
+        "Verified 2026-10-17 directly against fns.usda.gov Table 1 "
+        "(FY2026-27): net monthly limit for household size 1 = $1,330, "
+        "exactly 100% of this file's FPL_100_SINGLE_ANNUAL / 12"
+    ),
 )
 SNAP_ASSET_LIMIT = Limit(
     value=4500,
