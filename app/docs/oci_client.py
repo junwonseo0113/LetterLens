@@ -22,7 +22,7 @@ from dataclasses import dataclass
 
 from app.i18n import document_name_zh
 from app.number_guard import assert_numbers_preserved
-from app.oci_genai import genai_chat, language_name, oci_config, parse_json_object
+from app.oci_genai import genai_chat, language_name, oci_config, parse_json_object, plain_text
 from app.trace import call_real_or_sample, call_with_fallback
 
 from .schemas import SCHEMA_BY_TYPE, LetterType
@@ -387,7 +387,8 @@ def _real_extract(letter_type: LetterType, raw_text: str, key_values: dict, retr
     prompt = (
         f"{instruction}Extract fields as a JSON object only, matching this JSON schema: "
         f"{json.dumps(schema.model_json_schema())}. Use numbers (no $ or commas) for amounts and "
-        "YYYY-MM-DD for dates. Do not invent values not present in the text; use null for "
+        "YYYY-MM-DD for dates. Ignore watermarks, stamps, barcodes and page headers/footers. "
+        "Do not invent values not present in the text; use null for "
         f"optional fields you can't find.\n\nLetter text:\n{raw_text}"
     )
     return parse_json_object(genai_chat(prompt, json_mode=True))
@@ -397,11 +398,12 @@ def _real_explain(letter_type: LetterType, fields: dict, language: str) -> str:
     source_text = json.dumps(fields, ensure_ascii=False)
     prompt = (
         f"Explain this {letter_type.value.replace('_', ' ')} to an older adult reading at a 6th-grade level, "
-        f"in {language_name(language)}, in 2-4 short sentences. Copy every number, date and dollar amount "
+        f"in {language_name(language)}, in 2-4 short sentences of plain text (no markdown). Copy every number, date and dollar amount "
         "exactly as given and add no other numbers; keep official English program names in parentheses. "
+        "Only state facts that are in the data -- don't add dates, reasons or advice that aren't there. "
         f"Data: {source_text}"
     )
-    output = genai_chat(prompt)
+    output = plain_text(genai_chat(prompt))
     assert_numbers_preserved(output, source_text)
     return output
 

@@ -49,13 +49,28 @@ BILL_LETTER = ("medical_bill_sample.jpg", "Medical bill")
 
 def _upload(client: TestClient, auth: dict, filename: str, label: str) -> dict:
     path = DEMO_DIR / filename
+    # Step 1: read the photo -- nothing is saved yet.
     with open(path, "rb") as f:
         response = client.post(
-            "/letters",
+            "/letters/read",
             files={"file": (filename, f, "image/jpeg")},
             data={"language": LANGUAGE},
             headers=auth,
         )
+    response.raise_for_status()
+    draft = response.json()
+    # Step 2: she checks the facts and saves them; she also lets the app use
+    # her name/address from the SSA letter for her application.
+    response = client.post(
+        "/letters/confirm",
+        json={
+            "draft_token": draft["draft_token"],
+            "facts": {**draft["facts"], **draft["identifiers"]},
+            "save_identifiers": bool(draft["identifiers"]),
+            "language": LANGUAGE,
+        },
+        headers=auth,
+    )
     response.raise_for_status()
     body = response.json()
 

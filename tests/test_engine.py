@@ -213,3 +213,11 @@ def test_l_non_elderly_still_needs_net_and_asset_test():
 
     assert high_savings_snap.status == Status.NOT_NOW
     assert low_savings_snap.status == Status.POSSIBLE
+
+
+def test_snap_lists_savings_only_when_the_asset_test_decided():
+    under_200 = _by_program(evaluate(Profile(age=70, has_medicare=True, ss_gross_monthly=1700, savings=40_000)), "SNAP")
+    assert "savings" not in under_200.numbers_used
+    asset_test = _by_program(evaluate(Profile(age=45, earned_income_monthly=2700, savings=10_000)), "SNAP")
+    assert asset_test.numbers_used["savings"] == 10_000
+    assert asset_test.numbers_used["asset_limit"] == 4500

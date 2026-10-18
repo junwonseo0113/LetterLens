@@ -5,6 +5,7 @@ import App from "./App.jsx";
 import { AuthProvider } from "./context/AuthContext.jsx";
 import { FontScaleProvider } from "./context/FontScaleContext.jsx";
 import { LanguageProvider } from "./context/LanguageContext.jsx";
+import { ScanProvider } from "./context/ScanContext.jsx";
 import "./index.css";
 
 createRoot(document.getElementById("root")).render(
@@ -13,7 +14,9 @@ createRoot(document.getElementById("root")).render(
       <LanguageProvider>
         <FontScaleProvider>
           <AuthProvider>
-            <App />
+            <ScanProvider>
+              <App />
+            </ScanProvider>
           </AuthProvider>
         </FontScaleProvider>
       </LanguageProvider>

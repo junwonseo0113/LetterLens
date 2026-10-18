@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import AppHeader from "../components/AppHeader";
 import { useLanguage } from "../context/useLanguage";
 import { t } from "../strings";
@@ -28,6 +29,10 @@ export default function Help() {
           phone="1-800-633-4227"
         />
       </div>
+
+      <Link to="/privacy" className="privacy-link">
+        {t(language, "privacyLink")}
+      </Link>
 
       <p className="disclaimer">{t(language, "disclaimer")}</p>
     </div>

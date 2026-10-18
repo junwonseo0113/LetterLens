@@ -1,10 +1,8 @@
-import { useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import CameraIcon from "./CameraIcon";
 import { useLanguage } from "../context/useLanguage";
 import { t } from "../strings";
-import { useLetterUpload } from "../hooks/useLetterUpload";
-import ErrorBox from "./ErrorBox";
+import { useScan } from "../context/useScan";
 
 function TabIcon({ icon, active }) {
   const color = active ? "var(--color-primary)" : "var(--color-muted)";
@@ -56,8 +54,7 @@ export default function BottomTabBar() {
   const { language } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
-  const fileInputRef = useRef(null);
-  const { uploading, error, onFileChange, retry, dismiss } = useLetterUpload();
+  const { startScan, scanning } = useScan();
 
   function goToLetters() {
     navigate("/home", { state: { scrollTo: "past-letters" } });
@@ -69,19 +66,6 @@ export default function BottomTabBar() {
 
   return (
     <nav className="tab-bar no-print">
-      {error && (
-        <div className="tab-bar-toast">
-          <ErrorBox title={t(language, "errUpload")} error={error} onRetry={retry} onDismiss={dismiss} />
-        </div>
-      )}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        style={{ display: "none" }}
-        onChange={onFileChange}
-      />
 
       <button className="tab-bar-item" type="button" onClick={() => navigate("/home")}>
         <TabIcon icon="home" active={isHome} />
@@ -98,11 +82,11 @@ export default function BottomTabBar() {
       <button
         className="tab-bar-scan"
         type="button"
-        disabled={uploading}
+        disabled={scanning}
         aria-label={t(language, "takePhoto")}
-        onClick={() => fileInputRef.current?.click()}
+        onClick={startScan}
       >
-        {uploading ? "…" : <CameraIcon size={24} />}
+        {scanning ? "…" : <CameraIcon size={24} />}
       </button>
 
       <button className="tab-bar-item" type="button" onClick={() => navigate("/benefits")}>

@@ -3,7 +3,7 @@ import io
 import pytest
 from fastapi.testclient import TestClient
 
-from tests.conftest import auth_headers
+from tests.conftest import auth_headers, upload_letter
 from sqlmodel import SQLModel
 
 from app.db import engine
@@ -20,12 +20,7 @@ def _reset_db():
 
 
 def _upload(filename: str, language: str = "en", user_id: str = "demo"):
-    return client.post(
-        "/letters",
-        files={"file": (filename, io.BytesIO(b"fake-image-bytes"), "image/jpeg")},
-        data={"language": language},
-        headers=auth_headers(user_id),
-    )
+    return upload_letter(client, filename, auth_headers(user_id), language)
 
 
 def _answer(key: str, value: str, user_id: str = "demo"):
@@ -146,4 +141,6 @@ def test_unknown_savings_are_not_shown_as_zero():
     assert "savings" not in results["SNAP"]["numbers_used"]
     _answer("savings", "2000")
     results, _ = _by_program()
-    assert results["SNAP"]["numbers_used"]["savings"] == 2000
+    # Under 200% of the poverty line savings don't matter, so they aren't
+    # listed as "numbers used" even once known.
+    assert "savings" not in results["SNAP"]["numbers_used"]

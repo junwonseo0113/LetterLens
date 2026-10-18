@@ -119,7 +119,9 @@ def test_failed_real_call_falls_back_and_logs(monkeypatch, caplog):
     with caplog.at_level("WARNING", logger="letterlens.oci"):
         assert call_with_fallback(boom, lambda: "mock") == "mock"
     assert "offline fallback" in caplog.text
-    assert "NotAuthorizedOrNotFound" in caplog.text
+    assert "RuntimeError" in caplog.text
+    # The message is NOT logged: OCI/validation messages can repeat letter contents.
+    assert "NotAuthorizedOrNotFound" not in caplog.text
 
 
 def test_language_names():
@@ -156,3 +158,47 @@ def test_genai_chat_builds_a_valid_cohere_request(monkeypatch):
 
     oci_genai.genai_chat("hi")
     assert sent["body"]["chat_request"].get("response_format") is None
+
+
+def test_ai_prose_is_shown_as_plain_text():
+    from app.oci_genai import plain_text
+
+    assert plain_text("您每月领 **$1700.0**。\n## Note\n`QMB`") == "您每月领 $1700.0。\nNote\nQMB"
+
+
+def test_unknown_benefit_amount_is_not_sent_as_zero(monkeypatch):
+    # The engine's 0 for SNAP means "HRA sets the amount"; the model read it
+    # as "you get $0" during the live test.
+    from app.explain import oci_client as explain_oci
+    from app.rules.engine import Profile, evaluate
+
+    prompts = []
+    monkeypatch.setattr(explain_oci, "genai_chat", lambda p, json_mode=False: prompts.append(p) or "OK")
+    results = evaluate(Profile(has_medicare=True, ss_gross_monthly=1700, age=74))
+    snap = next(r for r in results if r.program == "SNAP")
+    qmb = next(r for r in results if r.program == "QMB")
+    explain_oci._real_explain(snap, "zh")
+    explain_oci._real_explain(qmb, "zh")
+    assert '"monthly_value"' not in prompts[0].split("Data: ")[1]
+    assert "never say it is $0" in prompts[0]
+    assert '"monthly_value": 202.9' in prompts[1]
+
+
+def test_confirm_reuses_the_dispute_letter_drafted_while_reading(monkeypatch):
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+    from app.protect import oci_client as protect_oci
+    from tests.conftest import auth_headers, upload_letter
+
+    calls = []
+    real = protect_oci.draft_dispute_letter
+    import app.docs.pipeline as pipeline_module
+
+    monkeypatch.setattr(pipeline_module, "draft_dispute_letter", lambda *a: calls.append(1) or real(*a))
+    client = TestClient(app)
+    headers = auth_headers("bill-reuse")
+    client.post("/profile/on-qmb?on_qmb=true", headers=headers)
+    body = upload_letter(client, "bill_sample.jpg", headers).json()
+    assert body["bill_check"]["dispute_letter"]
+    assert len(calls) == 1  # drafted while reading, reused on confirm

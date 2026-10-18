@@ -135,6 +135,35 @@ class LetterUploadResponse(BaseModel):
     # True when these values are MOCK_MODE sample data, not read from the photo.
     is_sample: bool = False
     created_at: datetime | None = None
+    # Facts the user changed before saving.
+    corrected_fields: list[str] = []
+
+
+class LetterDraftOut(BaseModel):
+    """What was read from a photo. Nothing is saved until the user confirms."""
+
+    draft_token: str
+    letter_type: LetterType
+    # Facts that will be saved on confirm (the user can correct the editable ones).
+    facts: dict
+    # Personal identifiers found (e.g. name/address); saved only if the user opts in.
+    identifiers: dict
+    # field -> kind ("money" | "date" | "text" | "bool") for correctable facts.
+    editable: dict
+    explanation: str
+    action_items: list[str]
+    deadline: date | None = None
+    bill_check: BillCheckResult | None = None
+    is_sample: bool = False
+    trace: list[TraceStepOut] = []
+
+
+class ConfirmIn(BaseModel):
+    draft_token: str
+    # The user's version of the editable facts (and identifiers, if kept).
+    facts: dict = {}
+    save_identifiers: bool = False
+    language: str = "en"
 
 
 class LetterSummary(BaseModel):

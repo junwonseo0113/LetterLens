@@ -58,12 +58,37 @@ function bearer(token) {
   return { Authorization: `Bearer ${token}` };
 }
 
-export async function uploadLetter({ file, language, token }) {
+// Read a letter photo. Nothing is saved: the server returns a draft the
+// user checks before confirmLetter() saves anything. `signal` cancels it.
+export async function readLetter({ file, name, language, token, signal }) {
   const formData = new FormData();
-  formData.append("file", file);
+  // The name is only used in demo mode (to pick the sample); never stored.
+  formData.append("file", file, name || "letter.jpg");
   formData.append("language", language);
-  const response = await fetch(`${API_BASE}/letters`, { method: "POST", headers: bearer(token), body: formData });
+  const response = await fetch(`${API_BASE}/letters/read`, {
+    method: "POST",
+    headers: bearer(token),
+    body: formData,
+    signal,
+  });
   return handleResponse(response);
+}
+
+export function confirmLetter(token, { draftToken, facts, saveIdentifiers, language }) {
+  return jsonRequest(
+    "POST",
+    "/letters/confirm",
+    { draft_token: draftToken, facts, save_identifiers: saveIdentifiers, language },
+    bearer(token),
+  );
+}
+
+export function fetchPrivacyInfo() {
+  return jsonRequest("GET", "/privacy/info");
+}
+
+export function deleteMyData(token) {
+  return jsonRequest("POST", "/me/delete-data", { confirm: true }, bearer(token));
 }
 
 export function fetchLetter(token, letterId, language) {

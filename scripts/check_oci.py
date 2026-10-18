@@ -51,6 +51,12 @@ def hint(exc: Exception) -> str:
         return "Install the SDK: .venv/bin/pip install oci"
     if "ConfigFileNotFound" in text or "Could not find config file" in text:
         return "No OCI config file. Set OCI_CONFIG_PATH (e.g. ~/.oci/config) -- see the README's OCI section."
+    if "InvalidConfig" in text:
+        return (
+            "A value in your OCI config file is missing or malformed (named above). "
+            "user= must be the FULL user OCID (ocid1.user.oc1..<long id>), fingerprint= must match "
+            "the API key added to that user, tenancy= must start ocid1.tenancy."
+        )
     if "InvalidPrivateKey" in text or "key_file" in text:
         return "The key_file in your OCI config doesn't point at a readable private key (.pem)."
     if isinstance(exc, KeyError) and "OCI_" in text:
@@ -139,8 +145,13 @@ def check_extract():
 
 def check_explain():
     from app.docs.oci_client import _real_explain
+    from app.privacy import minimize
 
-    return _real_explain(state["type"], state["fields"], "zh")
+    # Same as the app: the explanation only sees the facts that get saved.
+    explanation = _real_explain(state["type"], minimize(state["type"].value, state["fields"]), "zh")
+    if "Chen" in explanation or "Northern" in explanation or "陈" in explanation:
+        raise RuntimeError("explanation contains the person's name or address")
+    return explanation
 
 
 def check_benefits_explain():

@@ -13,13 +13,16 @@ import Help from "./screens/Help";
 import Home from "./screens/Home";
 import LanguagePicker from "./screens/LanguagePicker";
 import LetterResult from "./screens/LetterResult";
+import LetterReview from "./screens/LetterReview";
+import Privacy from "./screens/Privacy";
 import SignIn from "./screens/SignIn";
 
-const NO_TAB_BAR = new Set(["/", "/sign-in", "/caseworker"]);
+const NO_TAB_BAR = new Set(["/", "/sign-in", "/caseworker", "/letters/review"]);
 
 const PROTECTED_ROUTES = [
   { path: "/home", Screen: Home },
   { path: "/letter-result", Screen: LetterResult },
+  { path: "/letters/review", Screen: LetterReview },
   { path: "/letters/:letterId", Screen: LetterResult },
   { path: "/benefits", Screen: BenefitsFound },
   { path: "/application-pack", Screen: ApplicationPack },
@@ -50,6 +53,7 @@ export default function App() {
         <Route path="/" element={<LanguagePicker />} />
         <Route path="/sign-in" element={<SignIn />} />
         <Route path="/caseworker" element={<CaseworkerQueue />} />
+        <Route path="/privacy" element={<Privacy />} />
         {PROTECTED_ROUTES.map(({ path, Screen }) => (
           <Route
             key={path}

@@ -48,7 +48,7 @@ def myth_busting_lines(result: ProgramResult, profile: Profile, language: str = 
     if (
         result.program == "Extra Help"
         and result.status == Status.LIKELY
-        and "Automatic via" in result.rule_applied
+        and "Comes automatically once enrolled" in result.rule_applied
     ):
         lines.append(_LINES["extra_help_via_msp"][lang])
 

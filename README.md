@@ -69,8 +69,14 @@ Demo persona: Chen Yu-lan (陈玉兰), 74, Flushing, Queens, Mandarin speaker.
   extraction, explanation, translation, dispute-letter drafting — runs
   fully offline with deterministic canned responses. No OCI credentials
   are required to run or demo this project.
-- **Raw uploaded images are never persisted.** Only OCR'd text and
-  extracted structured fields reach the database.
+- **Photos are processed temporarily and never saved; facts only after the
+  user confirms them.** `POST /letters/read` reads a photo and returns a
+  signed draft without writing anything; `POST /letters/confirm` saves
+  only the confirmed facts the app uses (no OCR text, name/address only
+  if the user opts in). Uploads are closed and our copy zeroed on
+  success, failure and cancellation; logs record error types only.
+  "Delete my saved information" (`POST /me/delete-data`) removes a user's
+  saved data. Full details, processors, and limits: **docs/PRIVACY.md**.
 
 ## Architecture
 
@@ -82,7 +88,7 @@ Demo persona: Chen Yu-lan (陈玉兰), 74, Flushing, Queens, Mandarin speaker.
               ▼
 ┌──────────────────────────────────────────────────┐
 │                    FastAPI app                      │
-│   POST /letters     GET /letters                     │
+│   POST /letters/read -> /letters/confirm   GET /letters │
 │   GET  /reminders    GET /benefits                    │
 └───┬────────────┬─────────────┬─────────────┬───────────┘
     │            │             │             │
@@ -118,7 +124,7 @@ Demo persona: Chen Yu-lan (陈玉兰), 74, Flushing, Queens, Mandarin speaker.
 
 ```
 sign in (phone code)
-  -> upload letters                     POST /letters
+  -> upload letters          POST /letters/read, then /letters/confirm
   -> "Apply for MSP + Extra Help"       POST /applications   (pre-fills from letters + sign-in)
   -> interview: only missing answers    PUT  /applications/{id}/fields/{key}
        voice (browser speech, zh-CN / zh-HK) or typing; app/apply/normalize.py
@@ -177,7 +183,7 @@ sequenceDiagram
     participant AI as OCI Generative AI
     participant R as Rules engine (no AI)
 
-    U->>API: POST /letters (photo, language)
+    U->>API: POST /letters/read (photo, language)
     API->>DOC: analyze_document()
     DOC-->>API: raw text + key-values
     API->>AI: classify_letter(raw text)

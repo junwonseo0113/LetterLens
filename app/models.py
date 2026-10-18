@@ -74,6 +74,8 @@ class LetterRecord(SQLModel, table=True):
     # The explanation shown at upload, so the letter can be reopened later.
     explanation: Optional[str] = None
     explanation_language: Optional[str] = None
+    # Fields the user corrected before saving (the rest are as read).
+    corrected_fields: Optional[list] = Field(default=None, sa_column=Column(JSON))
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 

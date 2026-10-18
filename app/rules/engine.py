@@ -288,7 +288,7 @@ def _evaluate_extra_help(
         return ProgramResult(
             program="Extra Help",
             status=Status.LIKELY,
-            rule_applied=f"Automatic via {msp.program} (Medicare Savings Program) enrollment",
+            rule_applied=f"Comes automatically once enrolled in {msp.program} (Medicare Savings Program)",
             rule_applied_zh=f"加入 {msp.program}（医疗保险储蓄计划）后自动获得",
             numbers_used=msp.numbers_used,
             confidence=msp.confidence,
@@ -394,12 +394,7 @@ def _evaluate_snap(
         "household_gross_monthly_income": round(household_gross_monthly, 2),
         "fpl_200_monthly": round(fpl_200_monthly, 2),
         "fpl_100_monthly": round(fpl_100_monthly, 2),
-        "savings": profile.savings,
-        "asset_limit": limits.SNAP_ASSET_LIMIT.value,
     }
-    if "savings" in profile.unknown:
-        # Not needed for this decision and nobody told us -- don't show a fake $0.
-        del numbers_used["savings"]
 
     if household_gross_monthly <= fpl_200_monthly:
         status = Status.LIKELY
@@ -452,6 +447,13 @@ def _evaluate_snap(
             f"家庭总收入每月 ${household_gross_monthly:,.2f} 超过贫困线200% 每月 "
             f"${fpl_200_monthly:,.2f}，净收入/资产审查也未通过"
         )
+
+    # Savings and the asset limit are "numbers used" only when the asset test
+    # actually decided the result (otherwise an AI explanation invented a
+    # comparison from them in live testing).
+    if status == Status.POSSIBLE or (status == Status.NOT_NOW and countable <= fpl_100_monthly):
+        numbers_used["savings"] = profile.savings
+        numbers_used["asset_limit"] = limits.SNAP_ASSET_LIMIT.value
 
     warnings, warnings_zh = [], []
     if 60 <= profile.age <= 64 and not profile.disability and not profile.on_ssi:

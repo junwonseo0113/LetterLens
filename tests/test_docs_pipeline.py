@@ -3,7 +3,7 @@ import io
 import pytest
 from fastapi.testclient import TestClient
 
-from tests.conftest import auth_headers
+from tests.conftest import auth_headers, upload_letter
 from sqlmodel import Session, SQLModel
 
 from app.db import engine
@@ -21,12 +21,7 @@ def _reset_db():
 
 
 def _upload(filename: str, language: str = "en", user_id: str = "demo"):
-    return client.post(
-        "/letters",
-        files={"file": (filename, io.BytesIO(b"fake-image-bytes"), "image/jpeg")},
-        data={"language": language},
-        headers=auth_headers(user_id),
-    )
+    return upload_letter(client, filename, auth_headers(user_id), language)
 
 
 def test_ssa_benefit_letter_extraction_and_profile_merge():

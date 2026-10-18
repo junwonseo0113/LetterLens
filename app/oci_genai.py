@@ -66,6 +66,14 @@ def genai_chat(prompt: str, json_mode: bool = False) -> str:
     return text.strip()
 
 
+_MARKDOWN_RE = re.compile(r"\*\*|__|`|^#+\s*", re.MULTILINE)
+
+
+def plain_text(text: str) -> str:
+    """Strip markdown (bold, code, headings) -- the app shows plain text."""
+    return _MARKDOWN_RE.sub("", text).strip()
+
+
 _FENCE_RE = re.compile(r"^```(?:json)?\s*|\s*```$", re.IGNORECASE)
 
 

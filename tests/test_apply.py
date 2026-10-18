@@ -7,7 +7,7 @@ from sqlmodel import SQLModel
 from app.apply.normalize import FieldValueError, normalize
 from app.db import engine
 from app.main import app
-from tests.conftest import auth_headers
+from tests.conftest import auth_headers, upload_letter
 
 client = TestClient(app)
 
@@ -30,12 +30,7 @@ def _sign_in(phone: str = "718-555-0142") -> tuple[dict, str]:
 
 
 def _upload(filename: str, headers: dict):
-    response = client.post(
-        "/letters",
-        files={"file": (filename, io.BytesIO(b"fake-image-bytes"), "image/jpeg")},
-        data={"language": "zh"},
-        headers=headers,
-    )
+    response = upload_letter(client, filename, headers, language="zh")
     assert response.status_code == 200
     return response
 
@@ -126,11 +121,12 @@ def test_personal_endpoints_require_sign_in(method, path):
 
 def test_upload_requires_sign_in():
     response = client.post(
-        "/letters",
+        "/letters/read",
         files={"file": ("ssa.jpg", io.BytesIO(b"x"), "image/jpeg")},
         data={"language": "en", "user_id": "demo"},
     )
     assert response.status_code == 401
+    assert client.post("/letters/confirm", json={"draft_token": "x"}).status_code == 401
 
 
 def test_users_only_see_their_own_letters():

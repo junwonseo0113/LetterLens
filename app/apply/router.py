@@ -11,6 +11,7 @@ from app import settings
 from app.auth import current_user
 from app.db import get_session
 from app.models import AuthSession
+from app.uploads import UploadTooLarge, read_and_close, wipe
 
 from . import service
 from .service import ApplicationOut, ApplyError
@@ -111,17 +112,21 @@ async def add_document(
     auth: AuthSession = Depends(current_user),
     session: Session = Depends(get_session),
 ):
-    image_bytes = await file.read()
+    # Only "a photo was provided" is recorded; the photo itself is closed and
+    # our copy zeroed right here (it isn't read, stored or sent anywhere).
+    image = None
     try:
-        if not image_bytes:
+        image = await read_and_close(file)
+        if not image:
             raise ApplyError("Empty photo.", "照片是空的。")
         app = service.get_owned(session, auth, application_id)
         app = service.add_document(session, app, key)
+    except UploadTooLarge:
+        return _error(ApplyError("That photo is too large (over 10 MB).", "照片太大（超过10MB）。", status_code=413))
     except ApplyError as exc:
         return _error(exc)
     finally:
-        # Same hard rule as letters: the photo itself is never stored.
-        del image_bytes
+        wipe(image)
     return service.to_out(session, app)
 
 

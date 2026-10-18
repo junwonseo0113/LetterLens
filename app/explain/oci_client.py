@@ -12,7 +12,7 @@ from __future__ import annotations
 import json
 
 from app.number_guard import assert_numbers_preserved
-from app.oci_genai import genai_chat, language_name
+from app.oci_genai import genai_chat, language_name, plain_text
 from app.rules.engine import ProgramResult
 from app.trace import call_with_fallback
 
@@ -30,16 +30,19 @@ def _status_value(result: ProgramResult) -> str:
 
 
 def _source_text(result: ProgramResult) -> str:
-    return json.dumps(
-        {
-            "program": result.program,
-            "status": _status_value(result),
-            "monthly_value": result.monthly_value,
-            "annual_value": result.annual_value,
-            "numbers_used": result.numbers_used,
-            "rule_applied": result.rule_applied,
-        }
-    )
+    data = {
+        "program": result.program,
+        "status": _status_value(result),
+        "numbers_used": result.numbers_used,
+        "rule_applied": result.rule_applied,
+    }
+    # A 0 here means "we don't calculate this amount" (e.g. HRA sets the
+    # SNAP amount), not "$0". Given a 0, the model told users they'd get
+    # nothing -- so only pass real amounts.
+    if result.monthly_value:
+        data["monthly_value"] = result.monthly_value
+        data["annual_value"] = result.annual_value
+    return json.dumps(data)
 
 
 STATUS_PHRASES_ZH = {
@@ -82,11 +85,17 @@ def _real_explain(result: ProgramResult, language: str) -> str:
     source_text = _source_text(result)
     prompt = (
         f"Explain this benefits result to an older adult reading at a 6th-grade level, in {language_name(language)}, "
-        "in 2-4 short sentences. Copy every number, date and dollar amount exactly as given and add no "
-        "other numbers; keep official English program names in parentheses. "
-        f"Data: {source_text}"
+        "in 2-4 short sentences of plain text (no markdown). Copy every number, date and dollar amount exactly as given and add no "
+        "other numbers; keep official English program names in parentheses. Only state facts that are in the data. "
+        "Status 'likely' means they likely qualify. "
+        + (
+            ""
+            if result.monthly_value
+            else "No benefit amount is given because the agency decides it: never say it is $0 or that the person gets nothing. "
+        )
+        + f"Data: {source_text}"
     )
-    output = genai_chat(prompt)
+    output = plain_text(genai_chat(prompt))
     assert_numbers_preserved(output, source_text)
     return output
 

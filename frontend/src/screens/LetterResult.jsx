@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import BigButton from "../components/BigButton";
 import CameraIcon from "../components/CameraIcon";
@@ -11,12 +11,11 @@ import { useAuth } from "../context/useAuth";
 import { useLanguage } from "../context/useLanguage";
 import { STATUS_KEY, extractedFieldLabel, letterTypeLabel, t } from "../strings";
 import { fetchBenefits, fetchLetter } from "../api";
-import { formatMoney } from "../format";
 import { speechLang } from "../speech";
-import { useLetterUpload } from "../hooks/useLetterUpload";
+import { useScan } from "../context/useScan";
+import { formatField } from "../letterFields";
 import { useLoad } from "../hooks/useLoad";
 
-const MONEY_FIELDS = new Set(["gross_monthly_benefit", "part_b_deduction", "net_payment", "ending_balance"]);
 
 function readAloud(text, lang) {
   if (!window.speechSynthesis) return;
@@ -27,20 +26,6 @@ function readAloud(text, lang) {
   window.speechSynthesis.speak(utterance);
 }
 
-function formatField(key, value, language) {
-  if (value === null || value === undefined || value === "") return null;
-  if (typeof value === "boolean") return t(language, value ? "yes" : "no");
-  if (MONEY_FIELDS.has(key) && typeof value === "number") return `$${formatMoney(value)}`;
-  if (Array.isArray(value)) {
-    if (value.length === 0) return null;
-    return value
-      .map((item) =>
-        typeof item === "object" ? `${item.description}: $${formatMoney(item.amount)}` : String(item),
-      )
-      .join("; ");
-  }
-  return String(value);
-}
 
 export default function LetterResult() {
   const { language } = useLanguage();
@@ -48,8 +33,7 @@ export default function LetterResult() {
   const { letterId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
-  const fileInputRef = useRef(null);
-  const rescan = useLetterUpload({ replace: true });
+  const { startScan, scanning } = useScan();
 
   // Just uploaded: the result arrives with the navigation. Reopened from the
   // letter list (or after a refresh): load it by id -- the server only
@@ -168,7 +152,12 @@ export default function LetterResult() {
                 {fieldRows.map(([key, shown]) => (
                   <tr key={key}>
                     <td>{extractedFieldLabel(language, key)}</td>
-                    <td>{shown}</td>
+                    <td>
+                      {shown}
+                      {result.corrected_fields?.includes(key) && (
+                        <span className="review-source"> ({t(language, "correctedLabel")})</span>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -202,30 +191,14 @@ export default function LetterResult() {
         {t(language, "viewBenefits")}
       </BigButton>
 
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        style={{ display: "none" }}
-        onChange={rescan.onFileChange}
-      />
-      {rescan.error && (
-        <ErrorBox
-          title={t(language, "errUpload")}
-          error={rescan.error}
-          onRetry={rescan.retry}
-          onDismiss={rescan.dismiss}
-        />
-      )}
       <button
         type="button"
         className="big-button dark"
         style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
-        disabled={rescan.uploading}
-        onClick={() => fileInputRef.current?.click()}
+        disabled={scanning}
+        onClick={startScan}
       >
-        {rescan.uploading ? (
+        {scanning ? (
           t(language, "uploading")
         ) : (
           <>

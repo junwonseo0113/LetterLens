@@ -1407,3 +1407,140 @@ a.reminder-item {
   margin-top: 2px;
   flex-shrink: 0;
 }
+
+/* --- Scan flow, letter review, privacy ------------------------------------- */
+
+.scan-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  padding: 12px;
+}
+
+.scan-sheet {
+  width: 100%;
+  max-width: 480px;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: env(safe-area-inset-bottom);
+}
+
+.scan-sheet h2 {
+  margin: 0;
+}
+
+.scan-progress {
+  align-items: center;
+  text-align: center;
+}
+
+.scan-preview {
+  max-width: 100%;
+  max-height: 220px;
+  object-fit: contain;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-separator);
+}
+
+.notice-list {
+  margin: 0;
+  padding-left: 1.2em;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.notice-list.small {
+  color: var(--color-muted);
+  font-size: var(--font-size-sm);
+}
+
+.notice-checkbox {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin: 10px 0;
+  cursor: pointer;
+}
+
+.notice-checkbox input {
+  width: 22px;
+  height: 22px;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.privacy-link {
+  font-size: var(--font-size-sm);
+  color: var(--color-primary);
+}
+
+.notice-ok {
+  margin: 0;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  background: var(--color-success-bg);
+  color: var(--color-success-text);
+  font-weight: 700;
+}
+
+.fact-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--color-separator);
+}
+
+.fact-row:last-child {
+  border-bottom: none;
+}
+
+.fact-label {
+  font-size: var(--font-size-sm);
+  color: var(--color-muted);
+  font-weight: 600;
+}
+
+.segmented-mini {
+  display: flex;
+  gap: 8px;
+}
+
+.segmented-mini button {
+  min-height: 44px;
+  padding: 6px 20px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  font-family: var(--font-ui);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+}
+
+.segmented-mini button.active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-primary-text);
+  font-weight: 700;
+}
+
+/* Keep the notice's buttons visible on short phone screens. */
+.scan-sheet .question-buttons {
+  position: sticky;
+  bottom: -20px;
+  margin: 0 -20px -20px;
+  padding: 12px 20px 20px;
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-separator);
+}

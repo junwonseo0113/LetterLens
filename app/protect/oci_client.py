@@ -12,7 +12,7 @@ from __future__ import annotations
 import json
 
 from app.number_guard import assert_numbers_preserved
-from app.oci_genai import genai_chat, language_name
+from app.oci_genai import genai_chat, language_name, plain_text
 from app.trace import call_with_fallback
 
 from .schemas import DisputeLetter, FlaggedLineItem
@@ -41,10 +41,11 @@ def _real_english_letter(provider: str, flagged_line_items: list[FlaggedLineItem
         "The patient is enrolled in QMB (Qualified Medicare Beneficiary) and federal law bars "
         "billing QMB members for Medicare deductibles, coinsurance, or copays on Medicare-covered "
         "services. Ask the provider to remove exactly these charges and confirm in writing. "
+        "Write a complete letter with no placeholders in brackets (the patient adds their own details). "
         "Never invent amounts or line items beyond what's given, never change any number. "
         f"Provider: {provider}. Flagged charges: {source_text}"
     )
-    output = genai_chat(prompt)
+    output = plain_text(genai_chat(prompt))
     assert_numbers_preserved(output, source_text)
     return output
 
@@ -82,7 +83,7 @@ def _real_translate(english: str, language: str) -> str:
         f"Translate this letter into {language_name(language)}. Never change any number, date, or dollar amount -- "
         f"keep program names like QMB in parentheses in English.\n\n{english}"
     )
-    translated = genai_chat(prompt)
+    translated = plain_text(genai_chat(prompt))
     assert_numbers_preserved(translated, english)
     return translated
 

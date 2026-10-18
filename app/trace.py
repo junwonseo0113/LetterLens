@@ -27,6 +27,8 @@ from typing import Callable, TypeVar
 
 from pydantic import BaseModel
 
+from app.privacy import describe_failure
+
 T = TypeVar("T")
 
 log = logging.getLogger("letterlens.oci")
@@ -63,10 +65,11 @@ def call_with_fallback(real: Callable[[], T], mock: Callable[[], T]) -> T:
         return mock()
     try:
         return real()
-    except Exception:
+    except Exception as exc:
         # Loud on purpose: a silent fallback makes canned demo data look
         # like a live OCI answer.
-        log.warning("Real OCI call failed; using the offline fallback", exc_info=True)
+        # Error type/status only: messages can repeat letter contents.
+        log.warning("Real OCI call failed (%s); using the offline fallback", describe_failure(exc))
         mark_fallback_used()
         return mock()
 

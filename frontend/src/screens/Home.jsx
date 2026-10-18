@@ -10,7 +10,7 @@ import { useLanguage } from "../context/useLanguage";
 import { STATUS_KEY, letterTypeLabel, t } from "../strings";
 import { fetchBenefits, fetchLetters, fetchOnQmb, fetchReminders, setOnQmb } from "../api";
 import { benefitTone } from "../benefitTone";
-import { useLetterUpload } from "../hooks/useLetterUpload";
+import { useScan } from "../context/useScan";
 import { useLoad } from "../hooks/useLoad";
 
 const CATEGORY_TYPES = [
@@ -30,13 +30,12 @@ export default function Home() {
   const { language } = useLanguage();
   const { token, signOut } = useAuth();
   const location = useLocation();
-  const fileInputRef = useRef(null);
   const pastLettersRef = useRef(null);
   const qmbUserTouchedRef = useRef(false);
   const [onQmb, setOnQmbState] = useState(false);
   const [qmbSaving, setQmbSaving] = useState(false);
   const [qmbError, setQmbError] = useState(false);
-  const upload = useLetterUpload();
+  const { startScan, scanning } = useScan();
 
   const letters = useLoad(() => fetchLetters(token), [token]);
   const reminders = useLoad(() => fetchReminders(token), [token]);
@@ -83,35 +82,22 @@ export default function Home() {
       <AppHeader />
 
       <div className="section">
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          style={{ display: "none" }}
-          onChange={upload.onFileChange}
-        />
         <button
           type="button"
           className="scan-bar"
-          disabled={upload.uploading}
-          onClick={() => fileInputRef.current?.click()}
+          disabled={scanning}
+          onClick={startScan}
         >
           <span className="scan-bar-label">
-            {upload.uploading ? t(language, "uploading") : t(language, "scanPrompt")}
+            {scanning ? t(language, "uploading") : t(language, "scanPrompt")}
           </span>
           <span className="scan-bar-icon" aria-hidden="true">
             <CameraIcon size={20} />
           </span>
         </button>
-        {upload.error && (
-          <ErrorBox
-            title={t(language, "errUpload")}
-            error={upload.error}
-            onRetry={upload.retry}
-            onDismiss={upload.dismiss}
-          />
-        )}
+        <Link to="/privacy" className="privacy-link">
+          {t(language, "privacyLink")}
+        </Link>
       </div>
 
       <div className="section">
@@ -122,8 +108,8 @@ export default function Home() {
               key={type}
               type="button"
               className="category-card"
-              disabled={upload.uploading}
-              onClick={() => fileInputRef.current?.click()}
+              disabled={scanning}
+              onClick={startScan}
             >
               <IconBadge kind={type} size={32} />
               {letterTypeLabel(language, type)}
@@ -232,6 +218,10 @@ export default function Home() {
         <div className="ios-list">
           <Link to="/apply/status" className="nav-row">
             {t(language, "viewApplication")}
+            <span className="nav-row-chevron">{"›"}</span>
+          </Link>
+          <Link to="/privacy" className="nav-row">
+            {t(language, "privacyTitle")}
             <span className="nav-row-chevron">{"›"}</span>
           </Link>
         </div>
