@@ -1,0 +1,28 @@
+{
+  "letter_type": "medical_bill",
+  "provider": "SAMPLE FAMILY CLINIC",
+  "statement_date": "2027-01-15",
+  "is_medicare_claim": true,
+  "line_items": [
+    {
+      "date": "2026-12-18",
+      "description": "Office visit, established patient",
+      "billed": 180.0,
+      "medicare_approved": 137.09,
+      "medicare_paid": 109.67,
+      "patient_amount": 27.42,
+      "category": "coinsurance"
+    },
+    {
+      "date": "2026-12-18",
+      "description": "Copy of medical records",
+      "billed": 10.0,
+      "medicare_approved": null,
+      "medicare_paid": 0.0,
+      "patient_amount": 10.0,
+      "category": "other"
+    }
+  ],
+  "total_due": 37.42,
+  "due_date": "2027-02-10"
+}

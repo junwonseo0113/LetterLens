@@ -1,0 +1,33 @@
+{
+  "letter_type": "bank_statement",
+  "total_ending_balance": 40000.0,
+  "accounts": [
+    {
+      "type": "checking",
+      "ending_balance": 1487.6
+    },
+    {
+      "type": "savings",
+      "ending_balance": 38512.4
+    }
+  ],
+  "recurring_deposits": [
+    {
+      "source": "SSA",
+      "amount": 1497.0
+    }
+  ],
+  "monthly_rent": 950.0,
+  "utility_expenses": [
+    {
+      "payee": "CON EDISON",
+      "amount": 68.21
+    }
+  ],
+  "medical_expenses": [
+    {
+      "payee": "SAMPLE PHARMACY",
+      "amount": 42.15
+    }
+  ]
+}

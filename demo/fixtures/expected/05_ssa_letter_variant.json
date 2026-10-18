@@ -1,0 +1,13 @@
+{
+  "letter_type": "ssa_benefit_letter",
+  "gross_monthly_benefit": 2180.0,
+  "part_b_deduction": 202.9,
+  "net_payment": 1977.0,
+  "effective_date": "2025-12-01",
+  "benefit_type": "retirement",
+  "date_of_birth": "1955-07-02",
+  "has_medicare_part_a": true,
+  "has_medicare_part_b": true,
+  "recipient_name": "ELENA PETROVA",
+  "recipient_address": "456 SAMPLE ST APT 2C, BROOKLYN NY 11223"
+}

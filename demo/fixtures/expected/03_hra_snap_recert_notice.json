@@ -1,0 +1,18 @@
+{
+  "letter_type": "hra_renewal_notice",
+  "program": "SNAP",
+  "notice_date": "2026-10-05",
+  "deadline": "2026-11-10",
+  "certification_end_date": "2026-11-30",
+  "household_size": 1,
+  "simplified_form_eligible": true,
+  "simplified_form_id": "LDSS-5166",
+  "interview_required": "telephone",
+  "required_documents": [
+    "proof_of_income",
+    "proof_of_rent",
+    "proof_of_utilities",
+    "proof_of_medical_expenses",
+    "proof_of_identity"
+  ]
+}
