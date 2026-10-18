@@ -161,6 +161,10 @@ body {
   font-size: var(--font-size-base);
   line-height: 1.45;
   -webkit-font-smoothing: antialiased;
+  /* Break Korean at spaces, not mid-word ("신청하/기"). break-word still
+     lets space-less Chinese lines wrap when they would overflow. */
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 
 .app-shell {
@@ -770,6 +774,78 @@ input:focus-visible {
 .warning-line {
   color: var(--color-danger);
   font-weight: 600;
+}
+
+/* Benefit card notes: tinted boxes instead of emoji-prefixed lines. */
+.benefit-note {
+  margin: 12px 0 0;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  line-height: 1.45;
+}
+
+.benefit-note.tip {
+  background: var(--color-neutral-bg);
+  color: var(--color-ink);
+}
+
+.benefit-note.warn {
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+  font-weight: 600;
+}
+
+/* "Why / numbers used" as an iOS disclosure row under the card body. */
+.benefit-why {
+  margin-top: 14px;
+  border-top: 1px solid var(--color-separator);
+}
+
+.benefit-why summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 48px;
+  list-style: none;
+  cursor: pointer;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+.benefit-why summary::-webkit-details-marker {
+  display: none;
+}
+
+.benefit-why summary::after {
+  content: "\203A";
+  color: var(--color-muted);
+  font-size: 22px;
+  line-height: 1;
+  transition: transform 0.15s ease;
+}
+
+.benefit-why[open] summary::after {
+  transform: rotate(90deg);
+}
+
+.benefit-why > p {
+  font-size: var(--font-size-xs);
+  color: var(--color-muted);
+}
+
+.benefit-footnote {
+  margin: 0 4px;
+  font-size: var(--font-size-xs);
+  color: var(--color-muted);
+  text-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .benefit-why summary::after {
+    transition: none;
+  }
 }
 
 table.kv-table {
