@@ -570,6 +570,67 @@ input:focus-visible {
   text-decoration: none;
 }
 
+/* --- Benefit result card: colored band header + white body ------------- */
+
+.benefit-card2 {
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--color-surface);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.03);
+}
+
+.benefit-band {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px;
+  flex-wrap: wrap;
+}
+
+.benefit-band.tone-pink { background: var(--color-tile-pink); }
+.benefit-band.tone-yellow { background: var(--color-tile-yellow); }
+.benefit-band.tone-green { background: var(--color-tile-green); }
+.benefit-band.tone-blue { background: var(--color-tile-blue); }
+
+.benefit-band h2 {
+  margin: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.benefit-body {
+  padding: 16px;
+}
+
+.benefit-amount {
+  font-size: var(--font-size-xl);
+  font-weight: 800;
+  margin: 0;
+}
+
+.benefit-amount-sub {
+  font-size: var(--font-size-xs);
+  font-weight: 400;
+  color: var(--color-muted);
+  margin: 2px 0 12px;
+}
+
+.speak-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: var(--radius-pill);
+  background: var(--color-neutral-bg);
+  color: var(--color-ink);
+  border: none;
+  font-family: var(--font-ui);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 12px;
+}
+
 .trace-step {
   display: flex;
   justify-content: space-between;
@@ -1025,6 +1086,38 @@ pre.letter-text {
 }
 
 .nav-row:last-child {
+  border-bottom: none;
+}
+
+/* Collapsible nav-row (BenefitsFound's "not likely right now" list):
+   <details> wrapping a .nav-row <summary>, so the chevron rotates and
+   the row expands to show the same explanation/rule as a full card. */
+.nav-row-details summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+.nav-row-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.nav-row-details summary::after {
+  content: "\203A";
+  color: var(--color-muted);
+  font-size: var(--font-size-sm);
+  margin-left: 4px;
+}
+
+.nav-row-details[open] summary::after {
+  content: "\2304";
+}
+
+.nav-row-details-body {
+  padding: 0 16px 14px;
+  background: var(--color-surface);
+}
+
+.ios-list .nav-row-details:last-child .nav-row {
   border-bottom: none;
 }
 

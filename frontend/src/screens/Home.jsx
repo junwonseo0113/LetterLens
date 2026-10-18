@@ -6,6 +6,7 @@ import { useAuth } from "../context/useAuth";
 import { useLanguage } from "../context/useLanguage";
 import { STATUS_KEY, letterTypeLabel, t } from "../strings";
 import { fetchBenefits, fetchLetters, fetchOnQmb, fetchReminders, setOnQmb, uploadLetter } from "../api";
+import { benefitTone } from "../benefitTone";
 
 const CATEGORY_TYPES = [
   "ssa_benefit_letter",
@@ -15,8 +16,6 @@ const CATEGORY_TYPES = [
   "bank_statement",
   "other",
 ];
-
-const TILE_TONE = { QMB: "pink", MSP: "pink", QI: "pink", "Extra Help": "yellow", SNAP: "green" };
 
 export default function Home() {
   const { language } = useLanguage();
@@ -142,7 +141,7 @@ export default function Home() {
         {relevantBenefits.length > 0 ? (
           <div className="benefit-tile-row">
             {relevantBenefits.map((b) => (
-              <Link key={b.program} to="/benefits" className={`benefit-tile tone-${TILE_TONE[b.program] || "blue"}`}>
+              <Link key={b.program} to="/benefits" className={`benefit-tile tone-${benefitTone(b.program)}`}>
                 <div>
                   <div className="benefit-tile-title">{b.program}</div>
                   <div className="benefit-tile-sub">{t(language, STATUS_KEY[b.status])}</div>
