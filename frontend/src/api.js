@@ -40,6 +40,11 @@ export async function fetchBenefits(userId, language) {
   return handleResponse(response);
 }
 
+export async function fetchMspChecklist(userId) {
+  const response = await fetch(`${API_BASE}/msp-checklist?user_id=${encodeURIComponent(userId)}`);
+  return handleResponse(response);
+}
+
 export async function setOnQmb(userId, onQmb) {
   const response = await fetch(
     `${API_BASE}/profile/on-qmb?user_id=${encodeURIComponent(userId)}&on_qmb=${onQmb}`,

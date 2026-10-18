@@ -207,6 +207,42 @@ def test_packet_readiness_via_letters_endpoint():
     assert income_item["satisfied"] is True
 
 
+# --- KEEP: MSP application checklist ----------------------------------------
+
+
+def test_msp_checklist_no_letters_everything_missing():
+    response = client.get("/msp-checklist", params={"user_id": "demo"})
+    body = response.json()
+
+    assert body["decision_notice_days"] == 45
+    assert len(body["items"]) == 6
+    assert all(item["status"] == "missing" for item in body["items"])
+
+
+def test_msp_checklist_ssa_letter_satisfies_proof_of_income_only():
+    _upload("ssa_sample.jpg")
+    response = client.get("/msp-checklist", params={"user_id": "demo"})
+    items = {item["key"]: item["status"] for item in response.json()["items"]}
+
+    assert items["proof_of_income"] == "already_have"
+    # Everything else genuinely can't be satisfied by any of this app's
+    # letter types -- an SSA benefit letter isn't a Medicare card copy,
+    # a birth certificate, or a Social Security card.
+    assert items["medicare_card"] == "missing"
+    assert items["proof_of_identity_dob"] == "missing"
+    assert items["proof_of_residence"] == "missing"
+    assert items["social_security_card"] == "missing"
+    assert items["signed_application"] == "missing"
+
+
+def test_msp_checklist_labels_carry_official_english_term_in_korean():
+    response = client.get("/msp-checklist", params={"user_id": "demo"})
+    income_item = next(i for i in response.json()["items"] if i["key"] == "proof_of_income")
+
+    assert "소득 증명" in income_item["label_ko"]
+    assert "Proof of Income" in income_item["label_ko"]
+
+
 # --- PROTECT: QMB bill check ------------------------------------------------
 
 
