@@ -1328,54 +1328,20 @@ pre.letter-text {
   font-size: var(--font-size-sm);
 }
 
-.missing-info-prompt {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 14px 16px;
-  border-radius: var(--radius-md);
-  background: var(--color-warn-bg);
-  color: var(--color-warn-text);
-  text-decoration: none;
-}
-
-.missing-info-prompt span:not(.nav-row-chevron) {
-  flex: 1;
-}
-
-.missing-info-card h2 {
-  margin-top: 0;
-}
-
-.question-row {
-  padding: 14px 0;
-  border-top: 1px solid var(--color-separator);
-}
-
 .question-text {
   margin: 0 0 10px;
   font-weight: 700;
 }
 
-.question-buttons,
-.question-form {
+.question-buttons {
   display: flex;
   gap: 10px;
 }
 
-.question-buttons .big-button,
-.question-form .big-button {
+.question-buttons .big-button {
   width: auto;
   flex: 1;
   margin: 0;
-}
-
-.question-form .text-input {
-  flex: 2;
-}
-
-.benefit-tile.tone-gray {
-  background: var(--color-neutral-bg);
 }
 
 .status-text.missing_info {

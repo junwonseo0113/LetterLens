@@ -1,14 +1,14 @@
-import { useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link } from "react-router-dom";
 import BigButton from "../components/BigButton";
+import CameraIcon from "../components/CameraIcon";
 import ErrorBox from "../components/ErrorBox";
 import IconBadge from "../components/IconBadge";
 import Layout from "../components/Layout";
-import MissingInfoQuestions from "../components/MissingInfoQuestions";
 import { SampleNote } from "../components/SampleBadge";
 import TracePanel from "../components/TracePanel";
 import { useAuth } from "../context/useAuth";
 import { useLanguage } from "../context/useLanguage";
+import { useScan } from "../context/useScan";
 import { STATUS_KEY, confidenceLabel, numberLabel, t } from "../strings";
 import { formatMoney } from "../format";
 import { fetchBenefits } from "../api";
@@ -30,17 +30,10 @@ function readAloud(text, lang) {
 export default function BenefitsFound() {
   const { language } = useLanguage();
   const { token } = useAuth();
-  const location = useLocation();
+  const { startScan } = useScan();
   const { loading, data, error, reload } = useLoad(() => fetchBenefits(token, language || "en"), [token, language]);
   const benefits = data?.results || [];
   const trace = data?.trace || [];
-
-  // Arriving from "Answer questions" on Home: jump to the questions.
-  useEffect(() => {
-    if (data && location.hash === "#questions") {
-      document.getElementById("questions")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-  }, [data, location.hash]);
 
   const canApplyMsp = benefits.some(
     (b) => MSP_PROGRAMS.has(b.program) && (b.status === "likely" || b.status === "possible"),
@@ -60,9 +53,18 @@ export default function BenefitsFound() {
       {error && <ErrorBox title={t(language, "errLoadBenefits")} error={error} onRetry={reload} />}
       {data?.uses_sample_data && <SampleNote textKey="sampleBenefitsNote" />}
 
-      {data && <MissingInfoQuestions questions={data.questions} onAnswered={reload} />}
+      {!loading && relevant.length === 0 && notNow.length === 0 && needInfo.length > 0 && (
+        <div className="section">
+          <div className="card" style={{ textAlign: "center" }}>
+            <p>{t(language, "scanPrompt")}</p>
+            <BigButton onClick={startScan}>
+              <CameraIcon size={18} /> {t(language, "takePhoto")}
+            </BigButton>
+          </div>
+        </div>
+      )}
 
-      {!loading && needInfo.length > 0 && (
+      {!loading && needInfo.length > 0 && (relevant.length > 0 || notNow.length > 0) && (
         <div className="section">
           <h3>{t(language, "missingInfoTitle")}</h3>
           <div className="ios-list">
