@@ -21,9 +21,13 @@ SAVED_FIELDS: dict[str, list[str]] = {
 }
 
 # Used once when the facts are saved (to update the profile), then dropped:
-# date of birth only serves to work out age, and age is what's kept.
+# date of birth only serves to work out age, and age is what's kept. The HRA
+# notice's household list/programs/earned-income statement similarly only
+# serve to derive married/on_medicaid/earned_income_monthly -- those derived
+# booleans are what's kept, never the raw household roster or program list.
 TRANSIENT_FIELDS: dict[str, list[str]] = {
-    "ssa_benefit_letter": ["date_of_birth"],
+    "ssa_benefit_letter": ["date_of_birth", "receives_ssi"],
+    "hra_renewal_notice": ["household_members", "programs_on_case", "household_has_earned_income"],
 }
 
 # Lists of payments whose free-text descriptions can name people or payers;
