@@ -3,28 +3,34 @@ import BigButton from "../components/BigButton";
 import IconBadge from "../components/IconBadge";
 import Layout from "../components/Layout";
 import TracePanel from "../components/TracePanel";
+import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
 import { STATUS_KEY, t } from "../strings";
 import { formatMoney } from "../format";
 import { fetchBenefits } from "../api";
 
-const USER_ID = "demo";
+const MSP_PROGRAMS = new Set(["QMB", "QI", "MSP"]);
 
 export default function BenefitsFound() {
   const { language } = useLanguage();
+  const { userId } = useAuth();
   const [benefits, setBenefits] = useState([]);
   const [trace, setTrace] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setLoading(true);
-    fetchBenefits(USER_ID, language || "en")
+    fetchBenefits(userId, language || "en")
       .then((data) => {
         setBenefits(data.results);
         setTrace(data.trace);
       })
       .finally(() => setLoading(false));
-  }, [language]);
+  }, [userId, language]);
+
+  const canApplyMsp = benefits.some(
+    (b) => MSP_PROGRAMS.has(b.program) && (b.status === "likely" || b.status === "possible"),
+  );
 
   return (
     <Layout title={t(language, "benefitsFoundTitle")} backTo="/home">
@@ -85,6 +91,15 @@ export default function BenefitsFound() {
             <p className="disclaimer">{b.disclaimer}</p>
           </div>
         ))}
+
+      {canApplyMsp && (
+        <div className="section">
+          <BigButton to="/apply">{t(language, "applyCta")}</BigButton>
+          <p className="review-source" style={{ margin: "6px 4px 0" }}>
+            {t(language, "applyCtaHelp")}
+          </p>
+        </div>
+      )}
 
       <BigButton to="/application-pack" variant="secondary">
         {t(language, "seeApplicationPack")}

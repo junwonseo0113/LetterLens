@@ -1,21 +1,21 @@
 import { useEffect, useState } from "react";
 import BigButton from "../components/BigButton";
 import Layout from "../components/Layout";
+import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
 import { STATUS_KEY, UI_STRINGS, t } from "../strings";
 import { fetchBenefits } from "../api";
 
-const USER_ID = "demo";
-
 export default function CaseworkerCard() {
   const { language } = useLanguage();
+  const { userId } = useAuth();
   const [benefits, setBenefits] = useState([]);
 
   useEffect(() => {
-    fetchBenefits(USER_ID, language || "en")
+    fetchBenefits(userId, language || "en")
       .then((data) => setBenefits(data.results))
       .catch(() => {});
-  }, [language]);
+  }, [userId, language]);
 
   return (
     <Layout backTo="/benefits">

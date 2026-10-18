@@ -1,25 +1,25 @@
 import { useEffect, useState } from "react";
 import Layout from "../components/Layout";
+import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
 import { t } from "../strings";
 import { fetchBenefits, fetchMspChecklist, fetchReminders } from "../api";
-
-const USER_ID = "demo";
 const MSP_PROGRAMS = new Set(["QMB", "QI", "MSP"]);
 
 export default function ApplicationPack() {
   const { language } = useLanguage();
+  const { userId } = useAuth();
   const [reminders, setReminders] = useState([]);
   const [benefits, setBenefits] = useState([]);
   const [mspChecklist, setMspChecklist] = useState(null);
 
   useEffect(() => {
-    fetchReminders(USER_ID).then(setReminders).catch(() => {});
-    fetchBenefits(USER_ID, language || "en")
+    fetchReminders(userId).then(setReminders).catch(() => {});
+    fetchBenefits(userId, language || "en")
       .then((data) => setBenefits(data.results))
       .catch(() => {});
-    fetchMspChecklist(USER_ID).then(setMspChecklist).catch(() => {});
-  }, [language]);
+    fetchMspChecklist(userId).then(setMspChecklist).catch(() => {});
+  }, [userId, language]);
 
   const likelyPrograms = benefits.filter((b) => b.status === "likely" || b.status === "possible");
   const showMspChecklist = benefits.some(
@@ -35,7 +35,7 @@ export default function ApplicationPack() {
             <ul style={{ listStyle: "none", paddingLeft: 0, margin: 0 }}>
               {mspChecklist.items.map((item) => (
                 <li key={item.key} style={{ padding: "4px 0" }}>
-                  {item.status === "already_have" ? "✅" : "⬜"} {item.label_ko}
+                  {item.status === "already_have" ? "✅" : "⬜"} {language === "zh" ? item.label_zh : language === "ko" ? item.label_ko : item.label_en}
                 </li>
               ))}
             </ul>

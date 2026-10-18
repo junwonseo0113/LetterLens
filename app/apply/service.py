@@ -17,6 +17,7 @@ import string
 from datetime import datetime, timezone
 
 from pydantic import BaseModel
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
 from app.keep.msp_checklist import MSP_DECISION_NOTICE_DAYS, MSP_DOCUMENTS
@@ -204,16 +205,27 @@ def to_out(session: Session, app: ApplicationRecord) -> ApplicationOut:
     )
 
 
+def _find(session: Session, user_id: str, program: str) -> ApplicationRecord | None:
+    return session.exec(
+        select(ApplicationRecord).where(
+            ApplicationRecord.user_id == user_id, ApplicationRecord.program == program
+        )
+    ).first()
+
+
 def get_or_start(session: Session, auth: AuthSession, program: str) -> ApplicationRecord:
     if program not in TEMPLATES:
         raise ApplyError(f"No application form for {program} yet.", status_code=404)
-    app = session.exec(
-        select(ApplicationRecord)
-        .where(ApplicationRecord.user_id == auth.user_id, ApplicationRecord.program == program)
-        .order_by(ApplicationRecord.id.desc())
-    ).first()
+    app = _find(session, auth.user_id, program)
     if app is None:
-        app = ApplicationRecord(user_id=auth.user_id, program=program)
+        try:
+            app = ApplicationRecord(user_id=auth.user_id, program=program)
+            session.add(app)
+            session.commit()
+        except IntegrityError:
+            # A concurrent request created it first -- use that one.
+            session.rollback()
+            app = _find(session, auth.user_id, program)
     if app.status in EDITABLE_STATUSES:
         refresh_prefill(session, app, auth.phone)
     _save(session, app)

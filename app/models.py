@@ -10,7 +10,7 @@ from __future__ import annotations
 from datetime import date, datetime, timezone
 from typing import Optional
 
-from sqlmodel import JSON, Column, Field, SQLModel
+from sqlmodel import JSON, Column, Field, SQLModel, UniqueConstraint
 
 
 class ProfileRecord(SQLModel, table=True):
@@ -95,6 +95,10 @@ class ApplicationRecord(SQLModel, table=True):
     from info_requested. Submission is simulated -- no agency API exists
     -- and only ever happens after the user's signature and explicit yes.
     """
+
+    # One application per program per user; also stops two concurrent
+    # "start" requests from creating duplicates.
+    __table_args__ = (UniqueConstraint("user_id", "program"),)
 
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: str = Field(index=True)

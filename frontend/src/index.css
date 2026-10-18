@@ -622,3 +622,202 @@ pre.letter-text {
     background: #fff;
   }
 }
+
+/* --- Sign-in, application interview, review, status ----------------------- */
+
+.big-button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.text-input {
+  width: 100%;
+  padding: 14px 16px;
+  font-family: var(--font-ui);
+  font-size: var(--font-size-base);
+  color: var(--color-ink);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.link-button {
+  background: none;
+  border: none;
+  padding: 4px 0;
+  font-family: var(--font-ui);
+  font-size: var(--font-size-sm);
+  color: var(--color-primary);
+  cursor: pointer;
+  text-align: left;
+}
+
+.notice {
+  background: var(--color-success-bg);
+  color: var(--color-success-text);
+}
+
+.notice.warn {
+  background: var(--color-warn-bg);
+  color: var(--color-warn-text);
+}
+
+.voice-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  margin-top: 12px;
+  padding: 22px 20px;
+  font-family: var(--font-ui);
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--color-primary);
+  background: var(--color-bg);
+  border: 2px solid var(--color-primary);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.voice-button.listening {
+  color: var(--color-primary-text);
+  background: var(--color-danger);
+  border-color: var(--color-danger);
+  animation: voice-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes voice-pulse {
+  50% {
+    opacity: 0.75;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .voice-button.listening {
+    animation: none;
+  }
+}
+
+.segmented {
+  display: flex;
+  margin-top: 8px;
+  padding: 2px;
+  background: var(--color-neutral-bg);
+  border-radius: 9px;
+}
+
+.segmented button {
+  flex: 1;
+  padding: 8px;
+  font-family: var(--font-ui);
+  font-size: var(--font-size-sm);
+  color: var(--color-ink);
+  background: none;
+  border: none;
+  border-radius: 7px;
+  cursor: pointer;
+}
+
+.segmented button.active {
+  background: var(--color-surface);
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+.ios-list-card {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+.review-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--color-separator);
+}
+
+.review-row:last-child {
+  border-bottom: none;
+}
+
+.review-label {
+  font-size: var(--font-size-xs);
+  color: var(--color-muted);
+}
+
+.review-value {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.review-source {
+  font-size: var(--font-size-xs);
+  color: var(--color-muted);
+}
+
+.signature-pad {
+  display: block;
+  width: 100%;
+  height: 160px;
+  background: #fff;
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius-sm);
+  touch-action: none;
+}
+
+.status-hero {
+  text-align: center;
+}
+
+.status-hero.success {
+  background: var(--color-success-bg);
+  color: var(--color-success-text);
+}
+
+.status-hero.warn {
+  background: var(--color-warn-bg);
+  color: var(--color-warn-text);
+}
+
+.status-hero ul {
+  text-align: left;
+}
+
+.status-hero-icon {
+  font-size: 48px;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+
+.timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 4px;
+}
+
+.timeline li {
+  display: flex;
+  gap: 14px;
+  padding-bottom: 18px;
+  color: var(--color-muted);
+}
+
+.timeline li.done {
+  color: var(--color-ink);
+}
+
+.timeline-dot {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  margin-top: 6px;
+  border-radius: 50%;
+  border: 2px solid var(--color-border);
+}
+
+.timeline li.done .timeline-dot {
+  background: var(--color-success-text);
+  border-color: var(--color-success-text);
+}

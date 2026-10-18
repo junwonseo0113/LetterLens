@@ -2,11 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import BigButton from "../components/BigButton";
 import IconBadge from "../components/IconBadge";
+import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
 import { t } from "../strings";
 import { fetchLetters, fetchOnQmb, fetchReminders, setOnQmb, uploadLetter } from "../api";
-
-const USER_ID = "demo";
 
 const LETTER_TYPE_LABEL = {
   ssa_benefit_letter: "SSA",
@@ -19,6 +18,7 @@ const LETTER_TYPE_LABEL = {
 
 export default function Home() {
   const { language } = useLanguage();
+  const { userId, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const fileInputRef = useRef(null);
@@ -32,9 +32,9 @@ export default function Home() {
   const [qmbSaving, setQmbSaving] = useState(false);
 
   useEffect(() => {
-    fetchLetters(USER_ID).then(setLetters).catch(() => {});
-    fetchReminders(USER_ID).then(setReminders).catch(() => {});
-    fetchOnQmb(USER_ID)
+    fetchLetters(userId).then(setLetters).catch(() => {});
+    fetchReminders(userId).then(setReminders).catch(() => {});
+    fetchOnQmb(userId)
       .then((data) => {
         // Ignore this if the user already toggled the switch themselves
         // while this request was in flight -- their action is newer truth
@@ -42,7 +42,7 @@ export default function Home() {
         if (!qmbUserTouchedRef.current) setOnQmbState(data.on_qmb);
       })
       .catch(() => {});
-  }, []);
+  }, [userId]);
 
   useEffect(() => {
     if (location.state?.scrollTo === "past-letters") {
@@ -56,7 +56,7 @@ export default function Home() {
     setOnQmbState(next);
     setQmbSaving(true);
     try {
-      await setOnQmb(USER_ID, next);
+      await setOnQmb(userId, next);
     } catch {
       setOnQmbState(!next); // revert on failure
     } finally {
@@ -72,7 +72,7 @@ export default function Home() {
     setUploading(true);
     setError("");
     try {
-      const result = await uploadLetter({ file, language: language || "en", userId: USER_ID });
+      const result = await uploadLetter({ file, language: language || "en", userId });
       navigate("/letter-result", { state: { result } });
     } catch (err) {
       setError(err.message || t(language, "error"));
@@ -101,6 +101,10 @@ export default function Home() {
 
         <BigButton to="/benefits" variant="secondary">
           {t(language, "viewBenefits")}
+        </BigButton>
+
+        <BigButton to="/apply/status" variant="secondary">
+          {t(language, "viewApplication")}
         </BigButton>
       </div>
 
@@ -164,6 +168,10 @@ export default function Home() {
           </div>
         )}
       </div>
+
+      <button type="button" className="link-button" onClick={signOut}>
+        {t(language, "signOut")}
+      </button>
     </div>
   );
 }
