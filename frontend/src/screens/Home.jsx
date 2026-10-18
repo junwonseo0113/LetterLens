@@ -23,6 +23,7 @@ export default function Home() {
   const location = useLocation();
   const fileInputRef = useRef(null);
   const pastLettersRef = useRef(null);
+  const qmbUserTouchedRef = useRef(false);
   const [letters, setLetters] = useState([]);
   const [reminders, setReminders] = useState([]);
   const [uploading, setUploading] = useState(false);
@@ -33,7 +34,14 @@ export default function Home() {
   useEffect(() => {
     fetchLetters(USER_ID).then(setLetters).catch(() => {});
     fetchReminders(USER_ID).then(setReminders).catch(() => {});
-    fetchOnQmb(USER_ID).then((data) => setOnQmbState(data.on_qmb)).catch(() => {});
+    fetchOnQmb(USER_ID)
+      .then((data) => {
+        // Ignore this if the user already toggled the switch themselves
+        // while this request was in flight -- their action is newer truth
+        // than whatever the server had when the request was sent.
+        if (!qmbUserTouchedRef.current) setOnQmbState(data.on_qmb);
+      })
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -44,6 +52,7 @@ export default function Home() {
 
   async function handleQmbToggle(event) {
     const next = event.target.checked;
+    qmbUserTouchedRef.current = true;
     setOnQmbState(next);
     setQmbSaving(true);
     try {
