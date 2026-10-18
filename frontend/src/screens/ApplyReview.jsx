@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import BigButton from "../components/BigButton";
+import CameraIcon from "../components/CameraIcon";
 import Layout from "../components/Layout";
 import SignaturePad from "../components/SignaturePad";
 import { useAuth } from "../context/useAuth";
@@ -95,8 +96,13 @@ function DocumentRow({ doc, onPhoto }) {
               if (file) onPhoto(doc.key, file);
             }}
           />
-          <button type="button" className="link-button" onClick={() => inputRef.current?.click()}>
-            {"\u{1F4F7}"} {t(language, "addPhoto")}
+          <button
+            type="button"
+            className="link-button"
+            style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+            onClick={() => inputRef.current?.click()}
+          >
+            <CameraIcon size={16} /> {t(language, "addPhoto")}
           </button>
         </>
       ) : (

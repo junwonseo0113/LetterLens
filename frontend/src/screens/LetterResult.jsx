@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import BigButton from "../components/BigButton";
+import CameraIcon from "../components/CameraIcon";
 import IconBadge from "../components/IconBadge";
 import Layout from "../components/Layout";
 import TracePanel from "../components/TracePanel";
@@ -155,8 +156,19 @@ export default function LetterResult() {
         onChange={handleRescan}
       />
       {error && <p style={{ color: "var(--color-danger)" }}>{error}</p>}
-      <button type="button" className="big-button dark" onClick={() => fileInputRef.current?.click()}>
-        {rescanning ? t(language, "uploading") : `\u{1F4F7} ${t(language, "scanAnother")}`}
+      <button
+        type="button"
+        className="big-button dark"
+        style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+        onClick={() => fileInputRef.current?.click()}
+      >
+        {rescanning ? (
+          t(language, "uploading")
+        ) : (
+          <>
+            <CameraIcon size={20} /> {t(language, "scanAnother")}
+          </>
+        )}
       </button>
 
       <TracePanel trace={result.trace} />

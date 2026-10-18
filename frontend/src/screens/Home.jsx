@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import AppHeader from "../components/AppHeader";
+import CameraIcon from "../components/CameraIcon";
 import IconBadge from "../components/IconBadge";
 import { useAuth } from "../context/useAuth";
 import { useLanguage } from "../context/useLanguage";
@@ -109,7 +110,9 @@ export default function Home() {
         />
         <button type="button" className="scan-bar" onClick={() => fileInputRef.current?.click()}>
           <span className="scan-bar-label">{uploading ? t(language, "uploading") : t(language, "scanPrompt")}</span>
-          <span className="scan-bar-icon" aria-hidden="true">{"\u{1F4F7}"}</span>
+          <span className="scan-bar-icon" aria-hidden="true">
+            <CameraIcon size={20} />
+          </span>
         </button>
         {error && <p style={{ color: "var(--color-danger)" }}>{error}</p>}
       </div>

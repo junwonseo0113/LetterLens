@@ -3,6 +3,13 @@ import { useFontScale } from "../context/useFontScale";
 import { LANGUAGES } from "../strings";
 import { useLanguage } from "../context/useLanguage";
 
+// "Text size" glyph: Korean apps conventionally use 가, everyone else
+// (and our other three languages) reads "A" the same way.
+const SIZE_GLYPH = { ko: "가" };
+function sizeGlyph(language) {
+  return SIZE_GLYPH[language] || "A";
+}
+
 function BrandMark() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -34,8 +41,12 @@ export default function AppHeader() {
           onClick={cycleScale}
           aria-label="Text size"
           title="Text size"
+          style={scale > 1 ? { background: "var(--color-primary)", color: "#fff" } : undefined}
         >
-          <span style={{ fontSize: scale > 1 ? "13px" : "11px", fontWeight: 800 }}>가가</span>
+          <span style={{ display: "inline-flex", alignItems: "baseline", gap: 2 }}>
+            <span style={{ fontSize: "11px", fontWeight: 800 }}>{sizeGlyph(language)}</span>
+            <span style={{ fontSize: "16px", fontWeight: 800 }}>{sizeGlyph(language)}</span>
+          </span>
         </button>
         <Link to="/" className="util-pill" aria-label="Language">
           {"\u{1F310}"} {native}

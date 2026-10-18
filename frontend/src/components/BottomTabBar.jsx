@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import CameraIcon from "./CameraIcon";
 import { useAuth } from "../context/useAuth";
 import { useLanguage } from "../context/useLanguage";
 import { t } from "../strings";
@@ -114,7 +115,7 @@ export default function BottomTabBar() {
         aria-label={t(language, "takePhoto")}
         onClick={() => fileInputRef.current?.click()}
       >
-        {uploading ? "…" : "\u{1F4F7}"}
+        {uploading ? "…" : <CameraIcon size={24} />}
       </button>
 
       <button className="tab-bar-item" type="button" onClick={() => navigate("/benefits")}>
