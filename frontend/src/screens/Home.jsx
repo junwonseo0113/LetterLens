@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import BigButton from "../components/BigButton";
 import IconBadge from "../components/IconBadge";
 import { useAuth } from "../context/useAuth";
@@ -90,13 +90,16 @@ export default function Home() {
         </BigButton>
         {error && <p style={{ color: "var(--color-danger)" }}>{error}</p>}
 
-        <BigButton to="/benefits" variant="secondary">
-          {t(language, "viewBenefits")}
-        </BigButton>
-
-        <BigButton to="/apply/status" variant="secondary">
-          {t(language, "viewApplication")}
-        </BigButton>
+        <div className="ios-list">
+          <Link to="/benefits" className="nav-row">
+            {t(language, "viewBenefits")}
+            <span className="nav-row-chevron">{"›"}</span>
+          </Link>
+          <Link to="/apply/status" className="nav-row">
+            {t(language, "viewApplication")}
+            <span className="nav-row-chevron">{"›"}</span>
+          </Link>
+        </div>
       </div>
 
       <div className="section">
@@ -160,7 +163,7 @@ export default function Home() {
         )}
       </div>
 
-      <button type="button" className="link-button" onClick={signOut}>
+      <button type="button" className="sign-out-row" onClick={signOut}>
         {t(language, "signOut")}
       </button>
     </div>

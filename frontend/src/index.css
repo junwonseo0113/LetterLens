@@ -61,6 +61,11 @@
   --space: 16px;
   --radius-sm: 12px;
   --radius-md: 14px;
+  --shell-width: 480px;
+  /* Space behind the phone-width column on a wide (desktop) viewport --
+     darker than --color-bg so the app reads as a deliberate framed
+     device, not a column stranded in dead grey space. */
+  --color-canvas: #d9d9de;
 }
 
 :root[data-theme="dark"] {
@@ -82,6 +87,7 @@
   --color-danger-bg: #3a1210;
   --color-neutral-bg: #2c2c2e;
   --color-neutral-text: #aeaeb2;
+  --color-canvas: #000000;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -104,6 +110,7 @@
     --color-danger-bg: #3a1210;
     --color-neutral-bg: #2c2c2e;
     --color-neutral-text: #aeaeb2;
+    --color-canvas: #000000;
   }
 }
 
@@ -130,9 +137,10 @@ body {
 }
 
 .app-shell {
-  max-width: 480px;
+  max-width: var(--shell-width);
   margin: 0 auto;
   min-height: 100vh;
+  background: var(--color-bg);
   /* iPhone notch / home-indicator safe areas (iOS Safari + installed PWA).
      Bottom padding also reserves room for the fixed tab bar. */
   padding: calc(var(--space) + env(safe-area-inset-top)) calc(var(--space) + env(safe-area-inset-right))
@@ -140,6 +148,39 @@ body {
   display: flex;
   flex-direction: column;
   gap: 28px;
+}
+
+/* On a wide (desktop) viewport, frame the phone-width column instead of
+   leaving it stranded in a sea of grey -- a wider canvas color behind it
+   plus a card shadow reads as "this is a phone app", not "this broke". */
+@media (min-width: 640px) {
+  :root {
+    --shell-width: 420px;
+  }
+
+  body {
+    background: var(--color-canvas);
+    display: flex;
+    justify-content: center;
+  }
+
+  .app-shell {
+    /* Top-only margin: the bottom edge stays flush with the viewport so
+       the fixed-position tab bar (anchored to the real viewport bottom,
+       not this card) lines up with the card instead of floating below
+       a gap. */
+    margin: 40px auto 0;
+    min-height: calc(100vh - 40px);
+    border-radius: 40px 40px 0 0;
+    box-shadow:
+      0 30px 80px rgba(0, 0, 0, 0.25),
+      0 0 0 1px rgba(0, 0, 0, 0.06);
+  }
+
+  .tab-bar {
+    border-radius: 0 0 40px 40px;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.06);
+  }
 }
 
 .app-header {
@@ -540,7 +581,7 @@ pre.letter-text {
   left: 50%;
   transform: translateX(-50%);
   width: 100%;
-  max-width: 480px;
+  max-width: var(--shell-width);
   display: flex;
   align-items: center;
   justify-content: space-around;
@@ -728,6 +769,46 @@ pre.letter-text {
 .ios-list-card {
   padding-top: 4px;
   padding-bottom: 4px;
+}
+
+/* iOS Settings-style tappable list row: label + chevron, for secondary
+   navigation that doesn't need a full-width colored button (e.g. "View
+   benefits" / "My application" under the primary camera CTA on Home). */
+.nav-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  text-decoration: none;
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  border-bottom: 1px solid var(--color-separator);
+}
+
+.nav-row:last-child {
+  border-bottom: none;
+}
+
+.nav-row-chevron {
+  color: var(--color-muted);
+  font-size: var(--font-size-sm);
+}
+
+/* iOS Settings-style sign-out: centered, muted-to-destructive, set apart
+   from the content above it rather than a bare link bolted to the page. */
+.sign-out-row {
+  background: none;
+  border: none;
+  padding: 14px;
+  font-family: var(--font-ui);
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  color: var(--color-danger);
+  text-align: center;
+  cursor: pointer;
 }
 
 .review-row {
