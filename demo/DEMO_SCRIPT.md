@@ -18,10 +18,11 @@ cd LetterLens/frontend
 npm run dev -- --host 0.0.0.0 --port 5173
 ```
 
-- Phone demo: find your Mac's LAN IP (`ifconfig | grep "inet "`), set
-  `frontend/.env.local` to `VITE_API_BASE_URL=http://<that-ip>:8000`,
-  restart the frontend, open `http://<that-ip>:5173` in **iPhone Safari**
-  (not Chrome -- Add to Home Screen only works in Safari).
+- Phone demo: find your Mac's Wi-Fi IP (`ipconfig getifaddr en0`) and open
+  `http://<that-ip>:5173` in **iPhone Safari** (not Chrome -- Add to Home
+  Screen only works in Safari). Nothing else to configure: the frontend
+  calls the API through its own `/api` proxy, so the phone only ever
+  talks to port 5173.
 - **Risk**: some venue/campus Wi-Fi has client isolation and will block
   your phone from reaching your laptop even on the same network. Test
   this *before* you're on stage. If it fails, fall back to presenting

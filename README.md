@@ -234,11 +234,13 @@ confusing "Cannot find native binding" error from rolldown; with
 ```bash
 cd frontend
 npm install
-cp .env.example .env.local   # points at http://localhost:8000 by default
 npm run dev
 ```
 
-Open the printed local URL (typically http://localhost:5173).
+Open the printed local URL (typically http://localhost:5173). The frontend
+calls the backend through a Vite proxy at `/api` (see `vite.config.js`), so
+**on a phone** on the same Wi-Fi just open `http://<laptop-ip>:5173` --
+find the IP with `ipconfig getifaddr en0` on a Mac.
 
 ## Env vars
 
@@ -260,7 +262,7 @@ Frontend `frontend/.env.local` (see `frontend/.env.example`):
 
 | Var | Default | Purpose |
 |---|---|---|
-| `VITE_API_BASE_URL` | `http://localhost:8000` | Backend base URL the UI calls |
+| `VITE_API_BASE_URL` | `/api` (proxied to `127.0.0.1:8000`) | Only set to call a backend somewhere else |
 | `VITE_CASEWORKER_KEY` | `demo-caseworker` | Pre-fills the key on the `/caseworker` screen |
 
 Never commit `.env` or `.env.local` — both are gitignored.

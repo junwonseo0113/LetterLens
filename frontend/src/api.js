@@ -1,4 +1,6 @@
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+// Same-origin /api by default (proxied by Vite to the backend; see
+// vite.config.js). Set VITE_API_BASE_URL to call a backend directly.
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "/api";
 
 // Fired on any 401 so the app can drop an expired or revoked session.
 export const UNAUTHORIZED_EVENT = "letterlens:unauthorized";

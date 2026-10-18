@@ -2,8 +2,21 @@ import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
+// The frontend calls the API at /api/* on its own origin and Vite proxies
+// it to the FastAPI backend. That way a phone on the same Wi-Fi only needs
+// http://<laptop-ip>:5173 -- no second address to configure, no CORS.
+const apiProxy = {
+  '/api': {
+    target: process.env.API_PROXY_TARGET || 'http://127.0.0.1:8000',
+    changeOrigin: true,
+    rewrite: (path) => path.replace(/^\/api/, ''),
+  },
+}
+
 // https://vite.dev/config/
 export default defineConfig({
+  server: { host: true, proxy: apiProxy },
+  preview: { host: true, proxy: apiProxy },
   plugins: [
     react(),
     VitePWA({
@@ -16,6 +29,7 @@ export default defineConfig({
       // real bug mid-demo.
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+        navigateFallbackDenylist: [/^\/api\//],
       },
       manifest: {
         name: 'LetterLens',
