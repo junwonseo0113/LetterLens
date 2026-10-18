@@ -8,6 +8,7 @@ class FlaggedLineItem(BaseModel):
     amount: float
     category: str
     reason: str
+    reason_zh: str = ""
 
 
 class DisputeLetter(BaseModel):

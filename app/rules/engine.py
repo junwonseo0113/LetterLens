@@ -17,6 +17,9 @@ from .income import countable_income_msp, estimate_gross_from_deposit
 FINAL_DECISION_DISCLAIMER = (
     "Final decision is made by NY State / HRA / SSA, not this app."
 )
+FINAL_DECISION_DISCLAIMER_ZH = "最终决定由纽约州 / HRA / SSA 作出，而非本应用。"
+NEAR_LIMIT_WARNING = "Income is within 5% of the limit -- we recommend applying anyway."
+NEAR_LIMIT_WARNING_ZH = "收入在上限的5%以内——我们仍然建议您申请。"
 NEAR_LIMIT_PCT = 0.05
 
 
@@ -81,6 +84,11 @@ class ProgramResult:
     missing_fields: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     disclaimer: str = FINAL_DECISION_DISCLAIMER
+    # Chinese versions, written next to the English at each rule below so
+    # both are built from the same numbers -- never translated after the fact.
+    rule_applied_zh: str = ""
+    warnings_zh: list[str] = field(default_factory=list)
+    disclaimer_zh: str = FINAL_DECISION_DISCLAIMER_ZH
 
 
 def _near_limit(value: float, limit_value: float, pct: float = NEAR_LIMIT_PCT) -> bool:
@@ -113,6 +121,7 @@ def _evaluate_msp(
             program="MSP",
             status=Status.NOT_NOW,
             rule_applied="Medicare Savings Program requires Medicare enrollment",
+            rule_applied_zh="医疗保险储蓄计划 (Medicare Savings Program) 要求已加入医疗保险 (Medicare)",
             missing_fields=["has_medicare"],
         )
 
@@ -128,6 +137,7 @@ def _evaluate_msp(
         else limits.QI_INCOME_LIMIT_SINGLE_MONTHLY.value
     )
     household = "couple" if is_couple else "single"
+    household_zh = "夫妻" if is_couple else "单身"
     numbers_used = {
         "countable_income_monthly": round(countable, 2),
         "qmb_limit_monthly": qmb_limit,
@@ -140,6 +150,10 @@ def _evaluate_msp(
             f"Countable income ${countable:,.2f}/mo <= QMB limit "
             f"${qmb_limit:,.2f}/mo ({household}); NY MSP has no asset test"
         )
+        rule_zh = (
+            f"可计算收入每月 ${countable:,.2f} <= QMB 上限每月 ${qmb_limit:,.2f}（{household_zh}）；"
+            "纽约州 MSP 不审查存款资产"
+        )
         confidence = (
             Confidence.NEAR_LIMIT
             if _near_limit(countable, qmb_limit)
@@ -150,6 +164,10 @@ def _evaluate_msp(
         rule = (
             f"Countable income ${countable:,.2f}/mo <= QI limit "
             f"${qi_limit:,.2f}/mo ({household}); NY MSP has no asset test"
+        )
+        rule_zh = (
+            f"可计算收入每月 ${countable:,.2f} <= QI 上限每月 ${qi_limit:,.2f}（{household_zh}）；"
+            "纽约州 MSP 不审查存款资产"
         )
         confidence = (
             Confidence.NEAR_LIMIT
@@ -164,6 +182,10 @@ def _evaluate_msp(
             f"${qi_limit:,.2f}/mo ({household}) by ${gap:,.2f}/mo; "
             "income would need to drop by that amount to qualify"
         )
+        rule_zh = (
+            f"可计算收入每月 ${countable:,.2f}，超过 QI 上限每月 ${qi_limit:,.2f}（{household_zh}）"
+            f"${gap:,.2f}；收入需要减少这么多才符合条件"
+        )
         confidence = income_confidence
 
     result = ProgramResult(
@@ -173,12 +195,12 @@ def _evaluate_msp(
         annual_value=(limits.MEDICARE_PART_B_PREMIUM_MONTHLY.value * 12) if status == Status.LIKELY else 0.0,
         numbers_used=numbers_used,
         rule_applied=rule,
+        rule_applied_zh=rule_zh,
         confidence=confidence,
     )
     if result.confidence == Confidence.NEAR_LIMIT:
-        result.warnings.append(
-            "Income is within 5% of the limit -- we recommend applying anyway."
-        )
+        result.warnings.append(NEAR_LIMIT_WARNING)
+        result.warnings_zh.append(NEAR_LIMIT_WARNING_ZH)
     return result
 
 
@@ -190,6 +212,7 @@ def _evaluate_extra_help(
             program="Extra Help",
             status=Status.ALREADY_ENROLLED,
             rule_applied="Automatic via Medicaid/SSI enrollment",
+            rule_applied_zh="因已加入 Medicaid/SSI 而自动获得",
         )
 
     if not profile.has_medicare:
@@ -197,6 +220,7 @@ def _evaluate_extra_help(
             program="Extra Help",
             status=Status.NOT_NOW,
             rule_applied="Extra Help (Medicare Part D Low-Income Subsidy) requires Medicare",
+            rule_applied_zh="Extra Help（医疗保险 D 部分低收入补助）要求已加入医疗保险 (Medicare)",
             missing_fields=["has_medicare"],
         )
 
@@ -205,9 +229,11 @@ def _evaluate_extra_help(
             program="Extra Help",
             status=Status.LIKELY,
             rule_applied=f"Automatic via {msp.program} (Medicare Savings Program) enrollment",
+            rule_applied_zh=f"加入 {msp.program}（医疗保险储蓄计划）后自动获得",
             numbers_used=msp.numbers_used,
             confidence=msp.confidence,
             warnings=list(msp.warnings),
+            warnings_zh=list(msp.warnings_zh),
         )
 
     is_couple = _counts_as_couple(profile)
@@ -234,17 +260,26 @@ def _evaluate_extra_help(
             f"Annual countable income ${annual_income:,.2f} <= limit ${income_limit:,.2f} "
             f"and savings ${profile.savings:,.2f} <= resource limit ${resource_limit:,.2f}"
         )
+        rule_zh = (
+            f"全年可计算收入 ${annual_income:,.2f} <= 上限 ${income_limit:,.2f}，"
+            f"存款 ${profile.savings:,.2f} <= 资产上限 ${resource_limit:,.2f}"
+        )
     else:
         status = Status.NOT_NOW
         rule = (
             f"Annual countable income ${annual_income:,.2f} vs limit ${income_limit:,.2f}, "
             f"savings ${profile.savings:,.2f} vs resource limit ${resource_limit:,.2f}"
         )
+        rule_zh = (
+            f"全年可计算收入 ${annual_income:,.2f}，上限 ${income_limit:,.2f}；"
+            f"存款 ${profile.savings:,.2f}，资产上限 ${resource_limit:,.2f}"
+        )
     return ProgramResult(
         program="Extra Help",
         status=status,
         numbers_used=numbers_used,
         rule_applied=rule,
+        rule_applied_zh=rule_zh,
         confidence=income_confidence,
     )
 
@@ -287,6 +322,10 @@ def _evaluate_snap(
             f"Household gross income ${household_gross_monthly:,.2f}/mo <= 200% FPL "
             f"${fpl_200_monthly:,.2f}/mo; exact benefit amount set by HRA"
         )
+        rule_zh = (
+            f"家庭总收入每月 ${household_gross_monthly:,.2f} <= 贫困线200% 每月 "
+            f"${fpl_200_monthly:,.2f}；具体福利金额由 HRA 决定"
+        )
     elif household_has_elderly_or_disabled and countable <= fpl_100_monthly:
         status = Status.LIKELY
         rule = (
@@ -295,6 +334,12 @@ def _evaluate_snap(
             f"gross income test (7 CFR 273.9) -- net income ${countable:,.2f}/mo <= 100% FPL "
             f"${fpl_100_monthly:,.2f}/mo is enough on its own, no asset test applies"
         )
+        rule_zh = (
+            f"家庭总收入每月 ${household_gross_monthly:,.2f} 超过贫困线200%，但联邦法律 (7 CFR 273.9) "
+            "规定有60岁以上老人或残障成员的家庭不用通过总收入审查——"
+            f"净收入每月 ${countable:,.2f} <= 贫困线100% 每月 ${fpl_100_monthly:,.2f} 就足够，"
+            "也不审查资产"
+        )
     elif countable <= fpl_100_monthly and profile.savings <= limits.SNAP_ASSET_LIMIT.value:
         status = Status.POSSIBLE
         rule = (
@@ -302,26 +347,38 @@ def _evaluate_snap(
             f"but net income ${countable:,.2f}/mo <= 100% FPL ${fpl_100_monthly:,.2f}/mo "
             f"and savings ${profile.savings:,.2f} <= asset limit ${limits.SNAP_ASSET_LIMIT.value:,.2f}"
         )
+        rule_zh = (
+            f"家庭总收入每月 ${household_gross_monthly:,.2f} 超过贫困线200%，"
+            f"但净收入每月 ${countable:,.2f} <= 贫困线100% 每月 ${fpl_100_monthly:,.2f}，"
+            f"且存款 ${profile.savings:,.2f} <= 资产上限 ${limits.SNAP_ASSET_LIMIT.value:,.2f}"
+        )
     else:
         status = Status.NOT_NOW
         rule = (
             f"Household gross income ${household_gross_monthly:,.2f}/mo exceeds 200% FPL "
             f"${fpl_200_monthly:,.2f}/mo and net/asset test also fails"
         )
+        rule_zh = (
+            f"家庭总收入每月 ${household_gross_monthly:,.2f} 超过贫困线200% 每月 "
+            f"${fpl_200_monthly:,.2f}，净收入/资产审查也未通过"
+        )
 
-    warnings = []
+    warnings, warnings_zh = [], []
     if 60 <= profile.age <= 64 and not profile.disability and not profile.on_ssi:
         warnings.append(
             "SNAP work requirements may apply for adults age 60-64 unless disabled or exempt; confirm with HRA."
         )
+        warnings_zh.append("60至64岁的成年人可能需要满足 SNAP 工作要求（残障或豁免者除外）；请向 HRA 确认。")
 
     return ProgramResult(
         program="SNAP",
         status=status,
         numbers_used=numbers_used,
         rule_applied=rule,
+        rule_applied_zh=rule_zh,
         confidence=income_confidence,
         warnings=warnings,
+        warnings_zh=warnings_zh,
     )
 
 
@@ -332,6 +389,7 @@ def evaluate(profile: Profile) -> list[ProgramResult]:
                 program=name,
                 status=Status.NOT_NOW,
                 rule_applied="Program requires NYC / NY State residency",
+                rule_applied_zh="此计划要求居住在纽约市 / 纽约州",
             )
             for name in ("MSP", "Extra Help", "SNAP")
         ]

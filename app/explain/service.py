@@ -27,11 +27,16 @@ class ExplainedProgramResult:
     disclaimer: str
     explanation: str
     myth_busting_lines: list[str] = field(default_factory=list)
+    # rule_applied / warnings / disclaimer above are in the requested
+    # language (Chinese for "zh"); the official English rule is always here
+    # too, for the bilingual caseworker card.
+    rule_applied_en: str = ""
 
 
 def explain_results(
     results: list[ProgramResult], profile: Profile, language: str
 ) -> list[ExplainedProgramResult]:
+    zh = language.lower() in ("zh", "chinese")
     explained: list[ExplainedProgramResult] = []
     for result in results:
         explanation = oci_client.explain_program_result(result, language)
@@ -42,13 +47,14 @@ def explain_results(
                 monthly_value=result.monthly_value,
                 annual_value=result.annual_value,
                 numbers_used=result.numbers_used,
-                rule_applied=result.rule_applied,
+                rule_applied=result.rule_applied_zh if zh else result.rule_applied,
                 confidence=result.confidence.value,
                 missing_fields=list(result.missing_fields),
-                warnings=list(result.warnings),
-                disclaimer=result.disclaimer,
+                warnings=list(result.warnings_zh if zh else result.warnings),
+                disclaimer=result.disclaimer_zh if zh else result.disclaimer,
                 explanation=explanation,
-                myth_busting_lines=myth_busting_lines(result, profile),
+                myth_busting_lines=myth_busting_lines(result, profile, language),
+                rule_applied_en=result.rule_applied,
             )
         )
     return explained

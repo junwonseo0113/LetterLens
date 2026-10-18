@@ -58,7 +58,7 @@ def _mock_explain_zh(result: ProgramResult) -> str:
     sentence = f"根据您信件上的数字，{phrase} {result.program} 的条件。"
     if result.monthly_value:
         sentence += f"每月大约可以帮您省下 ${result.monthly_value:,.2f}。"
-    sentence += f"（{result.rule_applied}）"
+    sentence += f"（{result.rule_applied_zh}）"
     return sentence
 
 

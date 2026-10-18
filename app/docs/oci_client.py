@@ -20,6 +20,7 @@ import json
 import os
 from dataclasses import dataclass
 
+from app.i18n import document_name_zh
 from app.number_guard import assert_numbers_preserved
 from app.oci_genai import genai_chat, oci_config
 from app.trace import call_with_fallback
@@ -137,7 +138,7 @@ def _mock_explain_zh(letter_type: LetterType, fields: dict) -> str:
             "在纽约州，这些存款不会影响您申请医疗保险储蓄计划 (Medicare Savings Program, MSP)。"
         )
     if letter_type == LetterType.HRA_RENEWAL_NOTICE:
-        docs = "、".join(fields.get("required_documents", []))
+        docs = "、".join(document_name_zh(d) for d in fields.get("required_documents", []))
         return f"您的 {fields['program']} 福利需要在 {fields['deadline']} 之前续期。请提交：{docs}。"
     if letter_type == LetterType.MEDICAL_BILL:
         return (

@@ -9,6 +9,8 @@ is the only place that happens.
 
 from __future__ import annotations
 
+from app.i18n import COST_SHARING_ZH
+
 from .schemas import BillCheckResult, FlaggedLineItem
 
 BILLABLE_TO_QMB_CATEGORIES = {"deductible", "coinsurance", "copay"}
@@ -29,6 +31,10 @@ def check_qmb_bill(
                         reason=(
                             "QMB members cannot be billed for Medicare cost-sharing "
                             f"({item['category']}) on a Medicare-covered service."
+                        ),
+                        reason_zh=(
+                            "对于医疗保险承保的服务，不得向 QMB 会员收取医疗保险的分摊费用"
+                            f"（{COST_SHARING_ZH.get(item['category'], item['category'])}）。"
                         ),
                     )
                 )

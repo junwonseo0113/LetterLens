@@ -11,6 +11,7 @@ from datetime import date
 
 from sqlmodel import Session
 
+from app.i18n import document_name_zh, is_zh
 from app.keep.reminders import create_reminder, to_reminder_out
 from app.models import LetterRecord, ProfileRecord
 from app.protect.bill_check import check_qmb_bill
@@ -36,8 +37,13 @@ def _get_or_create_profile(session: Session, user_id: str) -> ProfileRecord:
     return profile
 
 
-def _action_items_and_deadline(letter_type: LetterType, fields: dict) -> tuple[list[str], date | None]:
+def _action_items_and_deadline(
+    letter_type: LetterType, fields: dict, language: str = "en"
+) -> tuple[list[str], date | None]:
+    zh = is_zh(language)
     if letter_type == LetterType.SSA_BENEFIT_LETTER:
+        if zh:
+            return (["这封信请留好备查，目前不需要做什么。", "请保存好——社工可能会问您每月福利（扣除前）的金额。"], None)
         return (
             [
                 "This letter is for your records. No action needed right now.",
@@ -46,19 +52,32 @@ def _action_items_and_deadline(letter_type: LetterType, fields: dict) -> tuple[l
             None,
         )
     if letter_type == LetterType.BANK_STATEMENT:
+        if zh:
+            return (["不需要做什么。我们用它来估算您的收入。"], None)
         return (["No action needed. We used this to estimate your income."], None)
     if letter_type == LetterType.HRA_RENEWAL_NOTICE:
-        docs = ", ".join(fields.get("required_documents", [])) or "the documents listed in the notice"
         deadline = fields.get("deadline")
+        required = fields.get("required_documents", [])
+        if zh:
+            docs = "、".join(document_name_zh(d) for d in required) or "通知里列出的文件"
+            return ([f"请在 {deadline} 之前提交：{docs}"], deadline)
+        docs = ", ".join(required) or "the documents listed in the notice"
         return ([f"Submit by {deadline}: {docs}"], deadline)
     if letter_type == LetterType.MEDICAL_BILL:
+        if zh:
+            return (
+                ["付款前，请先对照您的医疗保险 (Medicare) 承保范围检查这张账单。", "如果您有 QMB，您可能依法不用付这笔钱——请按“检查这张账单”。"],
+                None,
+            )
         return (
             [
                 "Check this bill against your Medicare coverage before paying.",
-                "If you have QMB, you may not legally owe this -- see the Protect tab.",
+                "If you have QMB, you may not legally owe this -- tap \"Check this bill.\"",
             ],
             None,
         )
+    if zh:
+        return (["如果有不清楚的地方，请拿这封信给社工看看。"], None)
     return (["Review this letter with a caseworker if anything is unclear."], None)
 
 
@@ -93,7 +112,7 @@ def process_letter(
 
     fields = validated.model_dump(mode="json")
 
-    action_items, deadline = _action_items_and_deadline(letter_type, fields)
+    action_items, deadline = _action_items_and_deadline(letter_type, fields, language)
 
     with trace.step("Explained it in your language", genai_service):
         explanation = oci_client.explain_letter(letter_type, fields, language)

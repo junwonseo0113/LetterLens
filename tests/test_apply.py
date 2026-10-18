@@ -365,3 +365,43 @@ def test_chinese_benefits_explanations():
     assert results
     assert all("MOCK_MODE" not in r["explanation"] for r in results)
     assert any("您很可能符合" in r["explanation"] for r in results)
+
+
+def test_every_rule_has_matching_chinese_with_the_same_numbers():
+    import re
+
+    from app.rules.engine import Profile, evaluate
+
+    profiles = [
+        Profile(has_medicare=True, ss_gross_monthly=1700, savings=40000, age=74),
+        Profile(has_medicare=True, ss_gross_monthly=2300, age=70),
+        Profile(has_medicare=True, ss_gross_monthly=5000, age=70),
+        Profile(has_medicare=True, ss_gross_monthly=1790, age=62),
+        Profile(has_medicare=False, ss_gross_monthly=1000),
+        Profile(nyc_resident=False),
+        Profile(has_medicare=True, on_medicaid=True, ss_gross_monthly=900),
+        Profile(has_medicare=True, married=True, ss_gross_monthly=1200, ss_gross_monthly_spouse=900),
+    ]
+    money = re.compile(r"\$[\d,]+\.\d{2}")
+    for profile in profiles:
+        for result in evaluate(profile):
+            assert result.rule_applied_zh, result.rule_applied
+            assert money.findall(result.rule_applied) == money.findall(result.rule_applied_zh), result.rule_applied
+            assert len(result.warnings) == len(result.warnings_zh)
+
+
+def test_benefits_in_chinese_are_fully_chinese_with_english_rule_kept():
+    _upload("ssa_benefit_letter_sample.jpg", auth_headers("chen"))
+    _upload("bank_statement_sample.jpg", auth_headers("chen"))
+    results = client.get("/benefits", params={"language": "zh"}, headers=auth_headers("chen")).json()["results"]
+    qmb = next(r for r in results if r["program"] == "QMB")
+    assert "可计算收入" in qmb["rule_applied"]
+    assert qmb["rule_applied_en"].startswith("Countable income")
+    assert qmb["disclaimer"].startswith("最终决定")
+    assert any("存款不会影响" in line for line in qmb["myth_busting_lines"])
+
+
+def test_chinese_letter_action_items():
+    body = _upload("hra_snap_renewal_notice_sample.jpg", auth_headers("chen")).json()
+    assert body["action_items"] == ["请在 2026-11-15 之前提交：收入证明、居住证明、身份证明"]
+    assert "收入证明、居住证明、身份证明" in body["explanation"]
