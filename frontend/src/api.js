@@ -100,10 +100,6 @@ export function fetchLetter(token, letterId, language) {
   );
 }
 
-export function answerQuestion(token, key, value) {
-  return jsonRequest("POST", "/profile/answers", { key, value }, bearer(token));
-}
-
 export function fetchCurrentApplication(token, program = "MSP") {
   return jsonRequest("GET", `/applications/current?program=${program}`, undefined, bearer(token));
 }

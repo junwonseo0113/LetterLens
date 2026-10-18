@@ -1,9 +1,11 @@
 import { Link } from "react-router-dom";
 import BigButton from "../components/BigButton";
+import CameraIcon from "../components/CameraIcon";
 import ErrorBox from "../components/ErrorBox";
 import Layout from "../components/Layout";
 import { useAuth } from "../context/useAuth";
 import { useLanguage } from "../context/useLanguage";
+import { useScan } from "../context/useScan";
 import { documentText, numberLabel, t } from "../strings";
 import { documentLabel } from "../applicationFields";
 import { fetchBenefits, fetchMspChecklist, fetchReminders } from "../api";
@@ -33,6 +35,7 @@ function Checklist({ items }) {
 // renew with HRA by the deadline, or apply through ACCESS HRA.
 function SnapSection({ snap, renewal }) {
   const { language } = useLanguage();
+  const { startScan } = useScan();
   if (!snap && !renewal) return null;
 
   let body;
@@ -57,8 +60,8 @@ function SnapSection({ snap, renewal }) {
     body = (
       <>
         <p>{t(language, "snapNeedsInfo")}</p>
-        <BigButton to="/benefits#questions" variant="secondary">
-          {t(language, "missingInfoCta")}
+        <BigButton onClick={startScan} variant="secondary">
+          <CameraIcon size={18} /> {t(language, "takePhoto")}
         </BigButton>
       </>
     );

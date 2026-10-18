@@ -23,8 +23,10 @@ const CATEGORY_TYPES = [
   "other",
 ];
 
-// Shown on Home: programs you may qualify for, and ones we can't decide yet.
-const SHOWN_STATUSES = new Set(["likely", "possible", "missing_info", "already_enrolled"]);
+// Shown on Home: programs the rules engine has actually decided. Ones it
+// can't decide yet stay off Home entirely -- scanning more letters is the
+// only way forward, never a typed-in answer.
+const SHOWN_STATUSES = new Set(["likely", "possible", "already_enrolled"]);
 
 export default function Home() {
   const { language } = useLanguage();
@@ -75,7 +77,6 @@ export default function Home() {
   }
 
   const shownBenefits = (benefits.data?.results || []).filter((b) => SHOWN_STATUSES.has(b.status));
-  const questionCount = benefits.data?.questions?.length || 0;
 
   return (
     <div className="app-shell">
@@ -131,22 +132,11 @@ export default function Home() {
         )}
         {benefits.data && (
           <>
-            {questionCount > 0 && (
-              <Link to="/benefits#questions" className="missing-info-prompt">
-                <strong>{t(language, "missingInfoTitle")}</strong>
-                <span>{t(language, "missingInfoCount", { n: questionCount })}</span>
-                <span className="nav-row-chevron">{"›"}</span>
-              </Link>
-            )}
             {benefits.data.uses_sample_data && <SampleNote textKey="sampleBenefitsNote" />}
             {shownBenefits.length > 0 ? (
               <div className="benefit-tile-row">
                 {shownBenefits.map((b) => (
-                  <Link
-                    key={b.program}
-                    to={b.status === "missing_info" ? "/benefits#questions" : "/benefits"}
-                    className={`benefit-tile tone-${b.status === "missing_info" ? "gray" : benefitTone(b.program)}`}
-                  >
+                  <Link key={b.program} to="/benefits" className={`benefit-tile tone-${benefitTone(b.program)}`}>
                     <div>
                       <div className="benefit-tile-title">{b.program}</div>
                       <div className="benefit-tile-sub">{t(language, STATUS_KEY[b.status])}</div>
