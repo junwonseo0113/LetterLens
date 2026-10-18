@@ -38,6 +38,130 @@ class OcrResult:
 # Mock mode: deterministic canned responses so the demo works offline.
 # ---------------------------------------------------------------------------
 
+# The 5 demo fixtures (demo/fixtures/SPEC.md, Mei-ling Chen persona) each
+# need their own distinct canned OCR text/fields -- a plain "ssa"/"bank"
+# keyword match can't tell fixture 1 and fixture 5 apart (both are SSA
+# letters). Checked by filename stem before the generic keyword fallback
+# below, which stays for backward compatibility with older test fixtures.
+_FIXTURE_TEXT_BY_STEM = {
+    "01_ssa_benefit_letter": (
+        "Social Security Administration\n"
+        "MEI-LING CHEN\n"
+        "123 SAMPLE AVE APT 4B, FLUSHING NY 11354\n"
+        "Your monthly benefit amount is $1,700.00.\n"
+        "Medicare Part B premium deduction: $202.90.\n"
+        "Your net payment is $1,497.00.\n"
+        "Date of birth: 1952-03-14.\n"
+        "This change is effective 2025-12-01."
+    ),
+    "02_bank_statement": (
+        "Sample Community Bank Monthly Statement\n"
+        "MEI-LING CHEN\n"
+        "Ending balance: $40,000.00\n"
+        "Recurring deposit: SSA TREAS 310 $1,497.00\n"
+        "Rent payment: $950.00\n"
+        "Con Edison electric: $68.21\n"
+        "Sample Pharmacy: $42.15"
+    ),
+    "03_hra_snap_recert_notice": (
+        "NYC Human Resources Administration\n"
+        "SNAP Recertification Notice\n"
+        "MEI-LING CHEN\n"
+        "Household size: 1\n"
+        "Your SNAP case must be recertified by 2026-11-10.\n"
+        "Certification ends 2026-11-30.\n"
+        "Simplified form LDSS-5166 available.\n"
+        "Please submit: proof of income, proof of rent, proof of utilities, "
+        "proof of medical expenses, proof of identity."
+    ),
+    "04_clinic_bill": (
+        "Sample Family Clinic Patient Statement\n"
+        "Provider: SAMPLE FAMILY CLINIC\n"
+        "Patient: MEI-LING CHEN\n"
+        "This is a Medicare claim.\n"
+        "Line item: Office visit coinsurance $27.42 (coinsurance)\n"
+        "Line item: Copy of medical records $10.00 (other, not a Medicare service)"
+    ),
+    "05_ssa_letter_variant": (
+        "Social Security Administration\n"
+        "ELENA PETROVA\n"
+        "456 SAMPLE ST APT 2C, BROOKLYN NY 11223\n"
+        "Your monthly benefit amount is $2,180.00.\n"
+        "Medicare Part B premium deduction: $202.90.\n"
+        "Your net payment is $1,977.00.\n"
+        "Date of birth: 1955-07-02.\n"
+        "This change is effective 2025-12-01."
+    ),
+}
+
+_FIXTURE_EXTRACT_BY_STEM = {
+    "01_ssa_benefit_letter": {
+        "gross_monthly_benefit": 1700.00,
+        "part_b_deduction": 202.90,
+        "net_payment": 1497.00,
+        "effective_date": "2025-12-01",
+        "recipient_name": "MEI-LING CHEN",
+        "recipient_address": "123 SAMPLE AVE APT 4B, FLUSHING NY 11354",
+        "date_of_birth": "1952-03-14",
+    },
+    "02_bank_statement": {
+        "ending_balance": 40000.00,
+        "recurring_deposits": [{"description": "SSA TREAS 310", "amount": 1497.00}],
+        "monthly_rent": 950.00,
+        "utility_expenses": [{"description": "CON EDISON", "amount": 68.21}],
+        "medical_expenses": [{"description": "SAMPLE PHARMACY", "amount": 42.15}],
+    },
+    "03_hra_snap_recert_notice": {
+        "program": "SNAP",
+        "deadline": "2026-11-10",
+        "notice_date": "2026-10-05",
+        "certification_end_date": "2026-11-30",
+        "household_size": 1,
+        "simplified_form_eligible": True,
+        "simplified_form_id": "LDSS-5166",
+        "interview_required": "telephone",
+        "required_documents": [
+            "proof of income",
+            "proof of rent",
+            "proof of utilities",
+            "proof of medical expenses",
+            "proof of identity",
+        ],
+    },
+    "04_clinic_bill": {
+        "provider": "SAMPLE FAMILY CLINIC",
+        "line_items": [
+            {
+                "description": "Office visit, established patient",
+                "amount": 27.42,
+                "category": "coinsurance",
+                "service_date": "2026-12-18",
+                "billed": 180.00,
+                "medicare_approved": 137.09,
+                "medicare_paid": 109.67,
+            },
+            {
+                "description": "Copy of medical records",
+                "amount": 10.00,
+                "category": "other",
+                "service_date": "2026-12-18",
+                "billed": 10.00,
+                "medicare_paid": 0.00,
+            },
+        ],
+        "is_medicare_claim": True,
+    },
+    "05_ssa_letter_variant": {
+        "gross_monthly_benefit": 2180.00,
+        "part_b_deduction": 202.90,
+        "net_payment": 1977.00,
+        "effective_date": "2025-12-01",
+        "recipient_name": "ELENA PETROVA",
+        "recipient_address": "456 SAMPLE ST APT 2C, BROOKLYN NY 11223",
+        "date_of_birth": "1955-07-02",
+    },
+}
+
 _MOCK_TEXT_BY_FILENAME_KEYWORD = {
     "ssa": (
         "Social Security Administration\n"
@@ -70,6 +194,9 @@ _MOCK_TEXT_BY_FILENAME_KEYWORD = {
 
 def _mock_ocr(filename: str) -> OcrResult:
     key = filename.lower()
+    for stem, text in _FIXTURE_TEXT_BY_STEM.items():
+        if stem in key:
+            return OcrResult(raw_text=text, key_values={})
     for keyword, text in _MOCK_TEXT_BY_FILENAME_KEYWORD.items():
         if keyword in key:
             return OcrResult(raw_text=text, key_values={})
@@ -91,7 +218,14 @@ def _mock_classify(raw_text: str) -> LetterType:
     return LetterType.OTHER
 
 
+_FIXTURE_EXTRACT_BY_RAW_TEXT = {
+    text: _FIXTURE_EXTRACT_BY_STEM[stem] for stem, text in _FIXTURE_TEXT_BY_STEM.items()
+}
+
+
 def _mock_extract(letter_type: LetterType, raw_text: str) -> dict:
+    if raw_text in _FIXTURE_EXTRACT_BY_RAW_TEXT:
+        return _FIXTURE_EXTRACT_BY_RAW_TEXT[raw_text]
     if letter_type == LetterType.SSA_BENEFIT_LETTER:
         return {
             "gross_monthly_benefit": 1700.00,

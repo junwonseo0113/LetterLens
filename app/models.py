@@ -43,6 +43,9 @@ class ProfileRecord(SQLModel, table=True):
     # Documented current enrollment -- distinct from the rules engine's
     # computed "likely eligible for QMB", which is a separate question.
     on_qmb: bool = False
+    # Documented current SNAP enrollment (an HRA recertification notice
+    # was uploaded) -- see app.rules.engine.Profile.on_snap.
+    on_snap: bool = False
     # Income of other household members (not self/spouse); SNAP only.
     other_household_income_monthly: Optional[float] = None
 

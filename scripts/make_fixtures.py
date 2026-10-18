@@ -484,7 +484,7 @@ def make_fixture_4() -> None:
             "is_medicare_claim": True,
             "line_items": [
                 {
-                    "date": "2026-12-18",
+                    "service_date": "2026-12-18",
                     "description": "Office visit, established patient",
                     "billed": 180.00,
                     "medicare_approved": 137.09,
@@ -493,7 +493,7 @@ def make_fixture_4() -> None:
                     "category": "coinsurance",
                 },
                 {
-                    "date": "2026-12-18",
+                    "service_date": "2026-12-18",
                     "description": "Copy of medical records",
                     "billed": 10.00,
                     "medicare_approved": None,

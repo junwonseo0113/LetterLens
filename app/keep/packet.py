@@ -27,11 +27,33 @@ SATISFYING_KEYWORDS: dict[str, tuple[str, ...]] = {
     "bank_statement": ("income", "bank", "asset", "resource", "statement", "deposit"),
 }
 
+# Checklist-item keyword -> an extracted field on a bank statement that, if
+# present, shows the payment on the statement -- not the actual bill/lease/
+# receipt the checklist asks for, so this only ever counts as "partial".
+PARTIAL_KEYWORDS: dict[str, str] = {
+    "rent": "monthly_rent",
+    "utilit": "utility_expenses",
+    "medical": "medical_expenses",
+}
+
 
 def _item_satisfied_by(item_text: str, letter_type: str) -> bool:
     keywords = SATISFYING_KEYWORDS.get(letter_type, ())
     item_lower = item_text.lower()
     return any(keyword in item_lower for keyword in keywords)
+
+
+def _partial_match(item_text: str, letters: list[LetterRecord]) -> LetterRecord | None:
+    item_lower = item_text.lower()
+    for keyword, field in PARTIAL_KEYWORDS.items():
+        if keyword not in item_lower:
+            continue
+        for letter in letters:
+            if letter.letter_type != "bank_statement":
+                continue
+            if (letter.extracted_fields or {}).get(field):
+                return letter
+    return None
 
 
 def check_packet_readiness(session: Session, reminder: Reminder) -> PacketReadiness:
@@ -43,10 +65,15 @@ def check_packet_readiness(session: Session, reminder: Reminder) -> PacketReadin
             (letter for letter in letters if _item_satisfied_by(item_text, letter.letter_type)),
             None,
         )
+        status = "have"
+        if matched is None:
+            matched = _partial_match(item_text, letters)
+            status = "partial" if matched else "missing"
         items.append(
             PacketItem(
                 item=item_text,
                 satisfied=matched is not None,
+                status=status,
                 matched_letter_id=matched.id if matched else None,
                 matched_letter_type=matched.letter_type if matched else None,
             )

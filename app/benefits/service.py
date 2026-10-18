@@ -63,6 +63,7 @@ def profile_record_to_profile(record: ProfileRecord) -> Profile:
         household_size=record.household_size or 1,
         owns_home=record.owns_home,
         on_qmb=record.on_qmb,
+        on_snap=record.on_snap,
         other_household_income_monthly=record.other_household_income_monthly or 0.0,
         unknown=unknown_facts(record),
     )

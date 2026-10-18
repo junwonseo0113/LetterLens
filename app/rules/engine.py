@@ -70,6 +70,10 @@ class Profile:
     # Documented current enrollment -- distinct from this engine's computed
     # "likely eligible for QMB", used by the PROTECT illegal-billing check.
     on_qmb: bool = False
+    # Documented current SNAP enrollment (e.g. an HRA recertification
+    # notice was uploaded) -- SNAP should show "already enrolled", not
+    # re-run the likely/possible eligibility check as if applying fresh.
+    on_snap: bool = False
 
     # Income of other people in the household (not self/spouse). SNAP only.
     other_household_income_monthly: float = 0.0
@@ -348,6 +352,14 @@ def _evaluate_extra_help(
 def _evaluate_snap(
     profile: Profile, gross_self: float, gross_spouse: float, countable: float, income_confidence: Confidence
 ) -> ProgramResult:
+    if profile.on_snap:
+        return ProgramResult(
+            program="SNAP",
+            status=Status.ALREADY_ENROLLED,
+            rule_applied="Already enrolled in SNAP (recertification notice on file)",
+            rule_applied_zh="已加入 SNAP（已收到续期通知）",
+        )
+
     facts = _income_facts(profile) + ["household_size"]
     couple_size = 2 if "married" not in profile.unknown and _counts_as_couple(profile) else 1
     if "household_size" not in profile.unknown and profile.household_size > couple_size:

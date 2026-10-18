@@ -8,9 +8,20 @@ numbers always win over estimated ones.
 
 from __future__ import annotations
 
+from datetime import date
+
 from app.models import ProfileRecord
 
 from .schemas import LetterType
+
+
+def _age_from_dob(dob: str, today: date | None = None) -> int:
+    today = today or date.today()
+    year, month, day = (int(p) for p in dob.split("-"))
+    age = today.year - year
+    if (today.month, today.day) < (month, day):
+        age -= 1
+    return age
 
 
 def merge_fields_into_profile(
@@ -24,6 +35,23 @@ def merge_fields_into_profile(
         profile.set_provenance("ss_gross_monthly", letter_id)
         profile.set_provenance("has_medicare", letter_id)
         updated += ["ss_gross_monthly", "has_medicare"]
+
+        # An SSA letter's date of birth answers the "age" question itself
+        # -- one less thing to ask about.
+        if fields.get("date_of_birth"):
+            profile.age = _age_from_dob(str(fields["date_of_birth"]))
+            profile.set_provenance("age", letter_id)
+            updated.append("age")
+
+    elif letter_type == LetterType.HRA_RENEWAL_NOTICE:
+        if fields.get("program") == "SNAP":
+            profile.on_snap = True
+            profile.set_provenance("on_snap", letter_id)
+            updated.append("on_snap")
+        if fields.get("household_size"):
+            profile.household_size = fields["household_size"]
+            profile.set_provenance("household_size", letter_id)
+            updated.append("household_size")
 
     elif letter_type == LetterType.BANK_STATEMENT:
         profile.savings = fields["ending_balance"]
@@ -43,7 +71,7 @@ def merge_fields_into_profile(
         profile.set_provenance("has_medicare", letter_id)
         updated.append("has_medicare")
 
-    # hra_renewal_notice and medical_bill don't update numeric Profile
-    # fields -- they drive Reminders and the QMB bill check (M5) instead.
+    # medical_bill doesn't update Profile fields -- it drives the QMB
+    # bill check (PROTECT) instead.
 
     return updated

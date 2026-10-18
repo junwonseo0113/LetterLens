@@ -23,7 +23,7 @@ const CATEGORY_TYPES = [
 ];
 
 // Shown on Home: programs you may qualify for, and ones we can't decide yet.
-const SHOWN_STATUSES = new Set(["likely", "possible", "missing_info"]);
+const SHOWN_STATUSES = new Set(["likely", "possible", "missing_info", "already_enrolled"]);
 
 export default function Home() {
   const { language } = useLanguage();

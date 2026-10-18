@@ -13,12 +13,16 @@ const MSP_PROGRAMS = new Set(["QMB", "QI", "MSP"]);
 const QUALIFIES = new Set(["likely", "possible"]);
 const SNAP_APPLY_DOCS = ["snapDocId", "snapDocAddress", "snapDocIncome", "snapDocExpenses", "snapDocMedical"];
 
+// status "have" | "partial" | "missing"; falls back to the done boolean
+// (treated as "have"/"missing") for checklists that don't pass a status.
+const STATUS_ICON = { have: "✅", partial: "🟡", missing: "⬜" };
+
 function Checklist({ items }) {
   return (
     <ul style={{ listStyle: "none", paddingLeft: 0, margin: 0 }}>
-      {items.map(({ key, done, label }) => (
+      {items.map(({ key, done, status, label }) => (
         <li key={key} style={{ padding: "4px 0" }}>
-          {done ? "✅" : "⬜"} {label}
+          {STATUS_ICON[status] || (done ? "✅" : "⬜")} {label}
         </li>
       ))}
     </ul>
@@ -33,9 +37,9 @@ function SnapSection({ snap, renewal }) {
 
   let body;
   if (renewal) {
-    const items = (renewal.packet?.items ?? renewal.checklist.map((item) => ({ item, satisfied: false }))).map(
-      (p, i) => ({ key: i, done: p.satisfied, label: documentText(language, p.item) }),
-    );
+    const items = (
+      renewal.packet?.items ?? renewal.checklist.map((item) => ({ item, satisfied: false, status: "missing" }))
+    ).map((p, i) => ({ key: i, done: p.satisfied, status: p.status, label: documentText(language, p.item) }));
     body = (
       <>
         <p>{t(language, "snapRenewalNext", { date: renewal.deadline })}</p>
@@ -144,9 +148,12 @@ export default function ApplicationPack() {
                 )}
               </div>
               <Checklist
-                items={(r.packet?.items ?? r.checklist.map((item) => ({ item, satisfied: false }))).map((p, i) => ({
+                items={(
+                  r.packet?.items ?? r.checklist.map((item) => ({ item, satisfied: false, status: "missing" }))
+                ).map((p, i) => ({
                   key: i,
                   done: p.satisfied,
+                  status: p.status,
                   label: documentText(language, p.item),
                 }))}
               />

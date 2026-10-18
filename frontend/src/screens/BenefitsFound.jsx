@@ -46,9 +46,13 @@ export default function BenefitsFound() {
     (b) => MSP_PROGRAMS.has(b.program) && (b.status === "likely" || b.status === "possible"),
   );
 
-  const relevant = benefits.filter((b) => b.status === "likely" || b.status === "possible");
+  // "already_enrolled" (e.g. SNAP after an HRA recertification notice) is
+  // good news, not a rejection -- it belongs with the positive results,
+  // not under "not likely right now".
+  const POSITIVE = new Set(["likely", "possible", "already_enrolled"]);
+  const relevant = benefits.filter((b) => POSITIVE.has(b.status));
   const needInfo = benefits.filter((b) => b.status === "missing_info");
-  const notNow = benefits.filter((b) => !["likely", "possible", "missing_info"].includes(b.status));
+  const notNow = benefits.filter((b) => !POSITIVE.has(b.status) && b.status !== "missing_info");
 
   return (
     <Layout title={t(language, "benefitsFoundTitle")} backTo="/home">

@@ -34,6 +34,9 @@ class SsaBenefitLetterFields(BaseModel):
     # Used only to pre-fill applications; the user confirms both on review.
     recipient_name: str | None = None
     recipient_address: str | None = None
+    # When present, lets the app answer the "age" question itself instead
+    # of asking -- see app.docs.profile_merge.
+    date_of_birth: date | None = None
 
 
 class RecurringDeposit(BaseModel):
@@ -44,12 +47,27 @@ class RecurringDeposit(BaseModel):
 class BankStatementFields(BaseModel):
     ending_balance: float
     recurring_deposits: list[RecurringDeposit] = Field(default_factory=list)
+    # Optional: lets the KEEP packet checklist mark proof-of-rent /
+    # proof-of-utilities / proof-of-medical-expenses as PARTIAL (a payment
+    # is visible on the statement) rather than MISSING, even though a bank
+    # statement alone isn't the actual bill/lease/receipt.
+    monthly_rent: float | None = None
+    utility_expenses: list[RecurringDeposit] = Field(default_factory=list)
+    medical_expenses: list[RecurringDeposit] = Field(default_factory=list)
 
 
 class HraRenewalNoticeFields(BaseModel):
     program: str
     deadline: date
     required_documents: list[str] = Field(default_factory=list)
+    notice_date: date | None = None
+    certification_end_date: date | None = None
+    # When present, lets the app answer the "household_size" question
+    # itself instead of asking -- see app.docs.profile_merge.
+    household_size: int | None = None
+    simplified_form_eligible: bool = False
+    simplified_form_id: str | None = None
+    interview_required: str | None = None
 
 
 class LineItemCategory(str, Enum):
@@ -61,8 +79,14 @@ class LineItemCategory(str, Enum):
 
 class BillLineItem(BaseModel):
     description: str
+    # The amount the patient is billed for this line -- what PROTECT acts
+    # on. billed/medicare_approved/medicare_paid are optional context only.
     amount: float
     category: LineItemCategory
+    service_date: date | None = None
+    billed: float | None = None
+    medicare_approved: float | None = None
+    medicare_paid: float | None = None
 
 
 class MedicalBillFields(BaseModel):
