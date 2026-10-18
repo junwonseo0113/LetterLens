@@ -42,7 +42,29 @@ def _source_text(result: ProgramResult) -> str:
     )
 
 
+STATUS_PHRASES_ZH = {
+    "likely": "您很可能符合",
+    "possible": "您也许符合",
+    "not_now": "您目前不符合",
+    "already_enrolled": "您已经加入了",
+    "missing_info": "我们需要更多信息才能判断您是否符合",
+}
+
+
+def _mock_explain_zh(result: ProgramResult) -> str:
+    # Hand-written Chinese template for the offline demo; program names and
+    # dollar amounts stay exactly as the rules engine produced them.
+    phrase = STATUS_PHRASES_ZH.get(_status_value(result), "以下是")
+    sentence = f"根据您信件上的数字，{phrase} {result.program} 的条件。"
+    if result.monthly_value:
+        sentence += f"每月大约可以帮您省下 ${result.monthly_value:,.2f}。"
+    sentence += f"（{result.rule_applied}）"
+    return sentence
+
+
 def _mock_explain(result: ProgramResult, language: str) -> str:
+    if language.lower() in ("zh", "chinese"):
+        return _mock_explain_zh(result)
     note = (
         ""
         if language.lower() in ("en", "english")

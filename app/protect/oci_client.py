@@ -49,9 +49,31 @@ def _real_english_letter(provider: str, flagged_line_items: list[FlaggedLineItem
     return output
 
 
-def _mock_translate(english: str, language: str) -> str:
+def _mock_chinese_letter(provider: str, flagged_line_items: list[FlaggedLineItem]) -> str:
+    # Hand-written Chinese template for the offline demo, mirroring the
+    # English draft line for line so the user can compare side by side.
+    lines = "\n".join(
+        f"- {item.description}: ${item.amount:,.2f} ({item.category})" for item in flagged_line_items
+    )
+    total = sum(item.amount for item in flagged_line_items)
+    return (
+        f"致 {provider}：\n\n"
+        "我已加入合格医疗保险受益人计划 (Qualified Medicare Beneficiary, QMB)。根据联邦法律，"
+        "对于医疗保险承保的服务，不得向 QMB 会员收取医疗保险的自付额、共同保险或共付额。"
+        "请更正我的账单，删除以下收费：\n\n"
+        f"{lines}\n\n"
+        f"争议总金额：${total:,.2f}\n\n"
+        "请以书面形式确认这些收费已被删除。谢谢。"
+    )
+
+
+def _mock_translate(
+    english: str, language: str, provider: str, flagged_line_items: list[FlaggedLineItem]
+) -> str:
     if language.lower() in ("en", "english"):
         return english
+    if language.lower() in ("zh", "chinese"):
+        return _mock_chinese_letter(provider, flagged_line_items)
     return f"[MOCK_MODE: shown in English, not translated to {language}]\n\n{english}"
 
 
@@ -72,6 +94,6 @@ def draft_dispute_letter(provider: str, flagged_line_items: list[FlaggedLineItem
     )
     translated = call_with_fallback(
         lambda: _real_translate(english, language),
-        lambda: _mock_translate(english, language),
+        lambda: _mock_translate(english, language, provider, flagged_line_items),
     )
     return DisputeLetter(english=english, translated=translated, language=language)

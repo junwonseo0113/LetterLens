@@ -5,6 +5,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.apply import router as apply_router
+from app.auth import router as auth_router
 from app.benefits import router as benefits_router
 from app.db import init_db
 from app.docs import router as letters_router
@@ -31,6 +33,8 @@ app.add_middleware(
 app.include_router(letters_router)
 app.include_router(reminders_router)
 app.include_router(benefits_router)
+app.include_router(auth_router)
+app.include_router(apply_router)
 
 
 @app.get("/health")

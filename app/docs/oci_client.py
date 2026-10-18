@@ -40,6 +40,8 @@ class OcrResult:
 _MOCK_TEXT_BY_FILENAME_KEYWORD = {
     "ssa": (
         "Social Security Administration\n"
+        "Chen, Yu-lan\n"
+        "123 Northern Blvd, Apt 4B, Flushing, NY 11354\n"
         "Your monthly benefit amount is $1,700.00.\n"
         "Medicare Part B premium deduction: $202.90.\n"
         "Your net payment is $1,497.10.\n"
@@ -95,6 +97,8 @@ def _mock_extract(letter_type: LetterType, raw_text: str) -> dict:
             "part_b_deduction": 202.90,
             "net_payment": 1497.10,
             "effective_date": "2026-01-01",
+            "recipient_name": "Chen, Yu-lan",
+            "recipient_address": "123 Northern Blvd, Apt 4B, Flushing, NY 11354",
         }
     if letter_type == LetterType.BANK_STATEMENT:
         return {
@@ -118,7 +122,34 @@ def _mock_extract(letter_type: LetterType, raw_text: str) -> dict:
     return {"summary": raw_text[:200]}
 
 
+def _mock_explain_zh(letter_type: LetterType, fields: dict) -> str:
+    # Hand-written Chinese templates for the offline demo; every number is
+    # copied from the extracted fields, never retyped.
+    if letter_type == LetterType.SSA_BENEFIT_LETTER:
+        return (
+            f"社会安全局 (Social Security) 每月给您 ${fields['gross_monthly_benefit']:,.2f}。"
+            f"其中 ${fields['part_b_deduction']:,.2f} 被扣去交医疗保险 B 部分 (Medicare Part B) 的保费。"
+            f"从 {fields['effective_date']} 起，您实际到账 ${fields['net_payment']:,.2f}。"
+        )
+    if letter_type == LetterType.BANK_STATEMENT:
+        return (
+            f"您的账户余额是 ${fields['ending_balance']:,.2f}。"
+            "在纽约州，这些存款不会影响您申请医疗保险储蓄计划 (Medicare Savings Program, MSP)。"
+        )
+    if letter_type == LetterType.HRA_RENEWAL_NOTICE:
+        docs = "、".join(fields.get("required_documents", []))
+        return f"您的 {fields['program']} 福利需要在 {fields['deadline']} 之前续期。请提交：{docs}。"
+    if letter_type == LetterType.MEDICAL_BILL:
+        return (
+            f"{fields['provider']} 给您寄来了一张账单。"
+            "如果这是医疗保险 (Medicare) 的收费，而您有 QMB，您可能依法不用付这笔钱。"
+        )
+    return "这封信的类型我们还不认识。请拿给社工看看。"
+
+
 def _mock_explain(letter_type: LetterType, fields: dict, language: str) -> str:
+    if language.lower() in ("zh", "chinese"):
+        return _mock_explain_zh(letter_type, fields)
     note = (
         ""
         if language.lower() in ("en", "english")

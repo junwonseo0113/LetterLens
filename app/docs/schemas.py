@@ -31,6 +31,9 @@ class SsaBenefitLetterFields(BaseModel):
     part_b_deduction: float
     net_payment: float
     effective_date: date
+    # Used only to pre-fill applications; the user confirms both on review.
+    recipient_name: str | None = None
+    recipient_address: str | None = None
 
 
 class RecurringDeposit(BaseModel):

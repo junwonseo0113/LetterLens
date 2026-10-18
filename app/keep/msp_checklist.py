@@ -24,41 +24,47 @@ from pydantic import BaseModel
 
 MSP_DECISION_NOTICE_DAYS = 45
 
-_ITEMS = [
+MSP_DOCUMENTS = [
     {
         "key": "signed_application",
         "label_en": "Signed MSP application (DOH-4328)",
         "label_ko": "서명된 MSP 신청서 (DOH-4328)",
+        "label_zh": "已签名的 MSP 申请表 (DOH-4328)",
         "satisfied_by": frozenset(),
     },
     {
         "key": "medicare_card",
         "label_en": "Medicare card, front and back",
         "label_ko": "메디케어 카드 앞뒤 사본 (Medicare card)",
+        "label_zh": "医疗保险卡正反面 (Medicare card)",
         "satisfied_by": frozenset(),
     },
     {
         "key": "proof_of_identity_dob",
         "label_en": "Proof of identity / date of birth",
         "label_ko": "신분증 / 생년월일 증명 (Proof of Identity/Date of Birth)",
+        "label_zh": "身份证明 / 出生日期证明 (Proof of Identity/Date of Birth)",
         "satisfied_by": frozenset(),
     },
     {
         "key": "proof_of_residence",
         "label_en": "Proof of residence, dated within 6 months",
         "label_ko": "거주 증명, 6개월 이내 발급 (Proof of Residence)",
+        "label_zh": "居住证明，6个月内 (Proof of Residence)",
         "satisfied_by": frozenset(),
     },
     {
         "key": "proof_of_income",
         "label_en": "Proof of income",
         "label_ko": "소득 증명 (Proof of Income)",
+        "label_zh": "收入证明 (Proof of Income)",
         "satisfied_by": frozenset({"ssa_benefit_letter", "bank_statement"}),
     },
     {
         "key": "social_security_card",
         "label_en": "Social Security card",
         "label_ko": "소셜시큐리티 카드 (Social Security card)",
+        "label_zh": "社会安全卡 (Social Security card)",
         "satisfied_by": frozenset(),
     },
 ]
@@ -68,6 +74,7 @@ class MspChecklistItemOut(BaseModel):
     key: str
     label_en: str
     label_ko: str
+    label_zh: str
     status: str  # "already_have" | "missing"
 
 
@@ -81,13 +88,14 @@ def check_msp_checklist(session: Session, user_id: str) -> MspChecklistOut:
     uploaded_types = {letter.letter_type for letter in letters}
 
     items = []
-    for item in _ITEMS:
+    for item in MSP_DOCUMENTS:
         has_match = bool(item["satisfied_by"] & uploaded_types)
         items.append(
             MspChecklistItemOut(
                 key=item["key"],
                 label_en=item["label_en"],
                 label_ko=item["label_ko"],
+                label_zh=item["label_zh"],
                 status="already_have" if has_match else "missing",
             )
         )

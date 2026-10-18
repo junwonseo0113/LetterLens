@@ -69,3 +69,50 @@ class Reminder(SQLModel, table=True):
     deadline: date
     checklist: list[str] = Field(default_factory=list, sa_column=Column(JSON))
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class OtpChallenge(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    phone: str = Field(index=True)
+    code: str
+    expires_at: datetime
+    attempts: int = 0
+    used: bool = False
+
+
+class AuthSession(SQLModel, table=True):
+    token: str = Field(primary_key=True)
+    user_id: str = Field(index=True)
+    phone: str
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class ApplicationRecord(SQLModel, table=True):
+    """A benefits application the app fills in and the user signs.
+
+    status: draft -> submitted | needs_review; a caseworker moves
+    needs_review -> submitted | info_requested; the user can resubmit
+    from info_requested. Submission is simulated -- no agency API exists
+    -- and only ever happens after the user's signature and explicit yes.
+    """
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: str = Field(index=True)
+    program: str
+    status: str = "draft"
+
+    # field key -> {"value": str | None, "source": str | None}
+    fields: dict = Field(default_factory=dict, sa_column=Column(JSON))
+    # Document keys the user photographed in-app. The photos themselves
+    # are discarded on upload, same rule as letters.
+    documents_provided: list[str] = Field(default_factory=list, sa_column=Column(JSON))
+
+    signature_png: Optional[str] = None  # data: URL from the signature pad
+    signed_at: Optional[datetime] = None
+    submitted_at: Optional[datetime] = None
+    confirmation_number: Optional[str] = None
+    review_reason: list[str] = Field(default_factory=list, sa_column=Column(JSON))
+    reviewer_note: Optional[str] = None
+
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
