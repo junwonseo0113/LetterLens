@@ -48,19 +48,29 @@
   --color-neutral-bg: #e5e5ea;
   --color-neutral-text: #6e6e73;
 
+  /* Pastel tile backgrounds for the Home benefit-tile row. */
+  --color-tile-pink: #fbe3e6;
+  --color-tile-yellow: #fdf1c8;
+  --color-tile-green: #dcf3e3;
+  --color-tile-blue: #dde9fd;
+
   --font-ui:
     -apple-system, BlinkMacSystemFont, "SF Pro Text", "Atkinson Hyperlegible", "Malgun Gothic",
     "Apple SD Gothic Neo", "PingFang SC", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 
-  --font-size-xs: 15px;
-  --font-size-sm: 17px;
-  --font-size-base: 20px;
-  --font-size-lg: 26px;
-  --font-size-xl: 36px;
+  /* Set by FontScaleProvider (inline style on the root element); the
+     "가/가" header button cycles this through 1 / 1.15 / 1.3. */
+  --font-scale: 1;
+  --font-size-xs: calc(15px * var(--font-scale));
+  --font-size-sm: calc(17px * var(--font-scale));
+  --font-size-base: calc(20px * var(--font-scale));
+  --font-size-lg: calc(26px * var(--font-scale));
+  --font-size-xl: calc(36px * var(--font-scale));
 
   --space: 16px;
   --radius-sm: 12px;
-  --radius-md: 14px;
+  --radius-md: 20px;
+  --radius-pill: 999px;
   --shell-width: 480px;
   /* Space behind the phone-width column on a wide (desktop) viewport --
      darker than --color-bg so the app reads as a deliberate framed
@@ -88,6 +98,11 @@
   --color-neutral-bg: #2c2c2e;
   --color-neutral-text: #aeaeb2;
   --color-canvas: #000000;
+
+  --color-tile-pink: #3a1f24;
+  --color-tile-yellow: #362b10;
+  --color-tile-green: #15301f;
+  --color-tile-blue: #182b4a;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -111,6 +126,11 @@
     --color-neutral-bg: #2c2c2e;
     --color-neutral-text: #aeaeb2;
     --color-canvas: #000000;
+
+    --color-tile-pink: #3a1f24;
+    --color-tile-yellow: #362b10;
+    --color-tile-green: #15301f;
+    --color-tile-blue: #182b4a;
   }
 }
 
@@ -239,14 +259,14 @@ a {
 .big-button {
   display: block;
   width: 100%;
-  padding: 17px 20px;
+  padding: 17px 24px;
   font-family: var(--font-ui);
   font-size: var(--font-size-lg);
-  font-weight: 600;
+  font-weight: 700;
   background: var(--color-primary);
   color: var(--color-primary-text);
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-pill);
   cursor: pointer;
   text-align: center;
   text-decoration: none;
@@ -264,6 +284,14 @@ a {
 
 .big-button.danger {
   background: var(--color-danger);
+}
+
+/* "Ink" pill button: the dark primary CTA from the design reference.
+   Uses --color-ink/--color-bg (not a fixed black) so it auto-inverts to
+   a light pill on a dark background instead of disappearing. */
+.big-button.dark {
+  background: var(--color-ink);
+  color: var(--color-bg);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -332,6 +360,214 @@ input:focus-visible {
 .badge.ai {
   background: var(--color-neutral-bg);
   color: var(--color-neutral-text);
+}
+
+/* Colored-text status (no chip background) -- used where a list is
+   already visually busy (icon + title + subtitle) and a filled pill
+   would be one shape too many. */
+.status-text {
+  font-weight: 700;
+  font-size: var(--font-size-sm);
+  white-space: nowrap;
+}
+
+.status-text.likely,
+.status-text.already_enrolled {
+  color: var(--color-success-text);
+}
+
+.status-text.possible {
+  color: var(--color-warn-text);
+}
+
+.status-text.not_now,
+.status-text.missing_info {
+  color: var(--color-neutral-text);
+}
+
+/* --- New header: logo mark + wordmark, pill utility buttons ------------ */
+
+.app-header-v2 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brand-mark {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.brand-name {
+  font-size: var(--font-size-base);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.header-utils {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.util-pill {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  background: var(--color-neutral-bg);
+  color: var(--color-ink);
+  border: none;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* --- Scan CTA styled as an inviting pill input, not a plain button ----- */
+
+.scan-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 6px 6px 6px 20px;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-primary);
+  color: var(--color-muted);
+  font-family: var(--font-ui);
+  font-size: var(--font-size-base);
+  cursor: pointer;
+  text-align: left;
+}
+
+.scan-bar-icon {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: var(--color-primary-text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+}
+
+.scan-bar-label {
+  flex: 1;
+}
+
+/* --- Category shortcut grid --------------------------------------------- */
+
+.category-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.category-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  border: none;
+  font-family: var(--font-ui);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: var(--color-ink);
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.03);
+}
+
+/* --- Horizontal-scroll colored benefit tiles ---------------------------- */
+
+.benefit-tile-row {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  margin: 0 calc(var(--space) * -1);
+  padding-left: var(--space);
+  padding-right: var(--space);
+  scrollbar-width: none;
+}
+
+.benefit-tile-row::-webkit-scrollbar {
+  display: none;
+}
+
+.benefit-tile {
+  flex: 0 0 auto;
+  width: 150px;
+  min-height: 120px;
+  padding: 16px;
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  text-decoration: none;
+  color: var(--color-ink);
+}
+
+.benefit-tile-title {
+  font-size: var(--font-size-sm);
+  font-weight: 800;
+}
+
+.benefit-tile-sub {
+  font-size: var(--font-size-xs);
+  margin-top: 2px;
+  opacity: 0.8;
+}
+
+.benefit-tile-icon {
+  align-self: flex-end;
+  font-size: 28px;
+}
+
+.benefit-tile.tone-pink { background: var(--color-tile-pink); }
+.benefit-tile.tone-yellow { background: var(--color-tile-yellow); }
+.benefit-tile.tone-green { background: var(--color-tile-green); }
+.benefit-tile.tone-blue { background: var(--color-tile-blue); }
+
+.section-head-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 0 0 6px 4px;
+}
+
+.section-head-row h3 {
+  margin: 0;
+}
+
+.see-all-link {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--color-primary);
+  text-decoration: none;
 }
 
 .trace-step {

@@ -9,6 +9,7 @@ import BenefitsFound from "./screens/BenefitsFound";
 import BillCheckResult from "./screens/BillCheckResult";
 import CaseworkerCard from "./screens/CaseworkerCard";
 import CaseworkerQueue from "./screens/CaseworkerQueue";
+import Help from "./screens/Help";
 import Home from "./screens/Home";
 import LanguagePicker from "./screens/LanguagePicker";
 import LetterResult from "./screens/LetterResult";
@@ -26,6 +27,7 @@ const PROTECTED_ROUTES = [
   { path: "/apply", Screen: Apply },
   { path: "/apply/review", Screen: ApplyReview },
   { path: "/apply/status", Screen: ApplyStatus },
+  { path: "/help", Screen: Help },
 ];
 
 // Letters and applications belong to a verified person -- sign in first.

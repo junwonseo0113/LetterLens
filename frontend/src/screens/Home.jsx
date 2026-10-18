@@ -1,11 +1,22 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import BigButton from "../components/BigButton";
+import AppHeader from "../components/AppHeader";
 import IconBadge from "../components/IconBadge";
 import { useAuth } from "../context/useAuth";
 import { useLanguage } from "../context/useLanguage";
-import { letterTypeLabel, t } from "../strings";
-import { fetchLetters, fetchOnQmb, fetchReminders, setOnQmb, uploadLetter } from "../api";
+import { STATUS_KEY, letterTypeLabel, t } from "../strings";
+import { fetchBenefits, fetchLetters, fetchOnQmb, fetchReminders, setOnQmb, uploadLetter } from "../api";
+
+const CATEGORY_TYPES = [
+  "ssa_benefit_letter",
+  "hra_renewal_notice",
+  "medicare_notice",
+  "medical_bill",
+  "bank_statement",
+  "other",
+];
+
+const TILE_TONE = { QMB: "pink", MSP: "pink", QI: "pink", "Extra Help": "yellow", SNAP: "green" };
 
 export default function Home() {
   const { language } = useLanguage();
@@ -17,6 +28,7 @@ export default function Home() {
   const qmbUserTouchedRef = useRef(false);
   const [letters, setLetters] = useState([]);
   const [reminders, setReminders] = useState([]);
+  const [benefits, setBenefits] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
   const [onQmb, setOnQmbState] = useState(false);
@@ -25,6 +37,9 @@ export default function Home() {
   useEffect(() => {
     fetchLetters(token).then(setLetters).catch(() => {});
     fetchReminders(token).then(setReminders).catch(() => {});
+    fetchBenefits(token, language || "en")
+      .then((data) => setBenefits(data.results || []))
+      .catch(() => {});
     fetchOnQmb(token)
       .then((data) => {
         // Ignore this if the user already toggled the switch themselves
@@ -33,7 +48,7 @@ export default function Home() {
         if (!qmbUserTouchedRef.current) setOnQmbState(data.on_qmb);
       })
       .catch(() => {});
-  }, [token]);
+  }, [token, language]);
 
   useEffect(() => {
     if (location.state?.scrollTo === "past-letters") {
@@ -72,9 +87,17 @@ export default function Home() {
     }
   }
 
+  // With zero letters uploaded, the rules engine still runs against an
+  // empty profile -- and a $0-income household trivially clears every
+  // income ceiling, so it would otherwise show as "likely qualifies" for
+  // SNAP before any real data exists. Only show results once there's at
+  // least one letter backing them.
+  const relevantBenefits =
+    letters.length === 0 ? [] : benefits.filter((b) => b.status === "likely" || b.status === "possible");
+
   return (
     <div className="app-shell">
-      <h1>{t(language, "appName")}</h1>
+      <AppHeader />
 
       <div className="section">
         <input
@@ -85,21 +108,57 @@ export default function Home() {
           style={{ display: "none" }}
           onChange={handleFileChange}
         />
-        <BigButton onClick={() => fileInputRef.current?.click()}>
-          {uploading ? t(language, "uploading") : `\u{1F4F7} ${t(language, "takePhoto")}`}
-        </BigButton>
+        <button type="button" className="scan-bar" onClick={() => fileInputRef.current?.click()}>
+          <span className="scan-bar-label">{uploading ? t(language, "uploading") : t(language, "scanPrompt")}</span>
+          <span className="scan-bar-icon" aria-hidden="true">{"\u{1F4F7}"}</span>
+        </button>
         {error && <p style={{ color: "var(--color-danger)" }}>{error}</p>}
+      </div>
 
-        <div className="ios-list">
-          <Link to="/benefits" className="nav-row">
-            {t(language, "viewBenefits")}
-            <span className="nav-row-chevron">{"›"}</span>
-          </Link>
-          <Link to="/apply/status" className="nav-row">
-            {t(language, "viewApplication")}
-            <span className="nav-row-chevron">{"›"}</span>
+      <div className="section">
+        <h3>{t(language, "frequentLetters")}</h3>
+        <div className="category-grid">
+          {CATEGORY_TYPES.map((type) => (
+            <button
+              key={type}
+              type="button"
+              className="category-card"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <IconBadge kind={type} size={32} />
+              {letterTypeLabel(language, type)}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="section">
+        <div className="section-head-row">
+          <h3>{t(language, "viewBenefits")}</h3>
+          <Link className="see-all-link" to="/benefits">
+            {t(language, "seeAll")} {"›"}
           </Link>
         </div>
+        {relevantBenefits.length > 0 ? (
+          <div className="benefit-tile-row">
+            {relevantBenefits.map((b) => (
+              <Link key={b.program} to="/benefits" className={`benefit-tile tone-${TILE_TONE[b.program] || "blue"}`}>
+                <div>
+                  <div className="benefit-tile-title">{b.program}</div>
+                  <div className="benefit-tile-sub">{t(language, STATUS_KEY[b.status])}</div>
+                </div>
+                <IconBadge kind={b.program} size={28} />
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <div className="ios-list">
+            <Link to="/benefits" className="nav-row">
+              {t(language, "viewBenefits")}
+              <span className="nav-row-chevron">{"›"}</span>
+            </Link>
+          </div>
+        )}
       </div>
 
       <div className="section">
@@ -142,6 +201,15 @@ export default function Home() {
         <p style={{ color: "var(--color-muted)", fontSize: "var(--font-size-xs)", margin: "6px 0 0 4px" }}>
           {t(language, "qmbToggleHelp")}
         </p>
+      </div>
+
+      <div className="section">
+        <div className="ios-list">
+          <Link to="/apply/status" className="nav-row">
+            {t(language, "viewApplication")}
+            <span className="nav-row-chevron">{"›"}</span>
+          </Link>
+        </div>
       </div>
 
       <div className="section" ref={pastLettersRef} id="past-letters">

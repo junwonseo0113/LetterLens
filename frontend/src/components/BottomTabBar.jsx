@@ -27,12 +27,26 @@ function TabIcon({ icon, active }) {
       </svg>
     );
   }
-  // benefits
+  if (icon === "benefits") {
+    return (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+        <rect x="3" y="8" width="18" height="12" rx="2" stroke={color} strokeWidth="1.8" />
+        <path d="M3 12h18" stroke={color} strokeWidth="1.8" />
+        <path d="M12 4v4M9 6h6" stroke={color} strokeWidth="1.8" strokeLinecap="round" />
+      </svg>
+    );
+  }
+  // help
   return (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-      <rect x="3" y="8" width="18" height="12" rx="2" stroke={color} strokeWidth="1.8" />
-      <path d="M3 12h18" stroke={color} strokeWidth="1.8" />
-      <path d="M12 4v4M9 6h6" stroke={color} strokeWidth="1.8" strokeLinecap="round" />
+      <circle cx="12" cy="12" r="9" stroke={color} strokeWidth="1.8" />
+      <path
+        d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .8-1 1.5v.4"
+        stroke={color}
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+      <circle cx="12" cy="17" r="1" fill={color} />
     </svg>
   );
 }
@@ -68,6 +82,7 @@ export default function BottomTabBar() {
 
   const isHome = location.pathname === "/home" && !location.state?.scrollTo;
   const isBenefits = location.pathname === "/benefits";
+  const isHelp = location.pathname === "/help";
 
   return (
     <nav className="tab-bar no-print">
@@ -106,6 +121,13 @@ export default function BottomTabBar() {
         <TabIcon icon="benefits" active={isBenefits} />
         <span style={{ color: isBenefits ? "var(--color-primary)" : "var(--color-muted)" }}>
           {t(language, "tabBenefits")}
+        </span>
+      </button>
+
+      <button className="tab-bar-item" type="button" onClick={() => navigate("/help")}>
+        <TabIcon icon="help" active={isHelp} />
+        <span style={{ color: isHelp ? "var(--color-primary)" : "var(--color-muted)" }}>
+          {t(language, "tabHelp")}
         </span>
       </button>
     </nav>

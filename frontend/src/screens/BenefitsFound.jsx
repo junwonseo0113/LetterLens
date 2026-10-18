@@ -42,7 +42,7 @@ export default function BenefitsFound() {
                 <IconBadge kind={b.program} size={36} />
                 <h2 style={{ margin: 0 }}>{b.program}</h2>
               </div>
-              <span className={`badge ${b.status}`}>{t(language, STATUS_KEY[b.status])}</span>
+              <span className={`status-text ${b.status}`}>{t(language, STATUS_KEY[b.status])}</span>
             </div>
 
             {b.annual_value > 0 && (
