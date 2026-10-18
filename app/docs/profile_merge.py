@@ -24,6 +24,21 @@ def _age_from_dob(dob: str, today: date | None = None) -> int:
     return age
 
 
+# Pay-period -> factor that converts one stub's gross pay to a monthly
+# figure, matching how the rules engine expects earned_income_monthly.
+_MONTHLY_FACTOR = {
+    "weekly": 52 / 12,
+    "biweekly": 26 / 12,
+    "semimonthly": 2,
+    "monthly": 1,
+}
+
+
+def _monthly_from_pay_stub(gross_pay: float, pay_period: str) -> float:
+    factor = _MONTHLY_FACTOR.get(pay_period, 1)
+    return round(gross_pay * factor, 2)
+
+
 def merge_fields_into_profile(
     profile: ProfileRecord, letter_type: LetterType, fields: dict, letter_id: int
 ) -> list[str]:
@@ -70,6 +85,14 @@ def merge_fields_into_profile(
         profile.has_medicare = True
         profile.set_provenance("has_medicare", letter_id)
         updated.append("has_medicare")
+
+    elif letter_type == LetterType.PAY_STUB:
+        # Answers the "earned_income_monthly" question directly -- the one
+        # fact genuinely absent from every other letter type this app
+        # reads, previously always asked rather than read from a document.
+        profile.earned_income_monthly = _monthly_from_pay_stub(fields["gross_pay"], fields["pay_period"])
+        profile.set_provenance("earned_income_monthly", letter_id)
+        updated.append("earned_income_monthly")
 
     # medical_bill doesn't update Profile fields -- it drives the QMB
     # bill check (PROTECT) instead.

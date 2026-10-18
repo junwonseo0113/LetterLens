@@ -8,6 +8,7 @@ const STYLES = {
   hra_renewal_notice: { bg: "#FF9500", icon: "renewal" },
   medical_bill: { bg: "#FF3B30", icon: "bill" },
   medicare_notice: { bg: "#AF52DE", icon: "doc" },
+  pay_stub: { bg: "#30B0C7", icon: "cash" },
   other: { bg: "#8E8E93", icon: "doc" },
   QMB: { bg: "#007AFF", icon: "plus" },
   MSP: { bg: "#007AFF", icon: "plus" },
@@ -76,6 +77,13 @@ function Glyph({ icon }) {
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
           <circle cx="12" cy="12" r="9" stroke={s} strokeWidth={w} />
           <path d="M9 12.5l2 2 4-4.5" stroke={s} strokeWidth={w} strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      );
+    case "cash":
+      return (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+          <rect x="3" y="6" width="18" height="12" rx="2" stroke={s} strokeWidth={w} />
+          <circle cx="12" cy="12" r="2.6" stroke={s} strokeWidth={w} />
         </svg>
       );
     default:

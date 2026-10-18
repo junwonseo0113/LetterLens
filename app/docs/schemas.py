@@ -23,6 +23,7 @@ class LetterType(str, Enum):
     MEDICARE_NOTICE = "medicare_notice"
     HRA_RENEWAL_NOTICE = "hra_renewal_notice"
     MEDICAL_BILL = "medical_bill"
+    PAY_STUB = "pay_stub"
     OTHER = "other"
 
 
@@ -95,6 +96,16 @@ class MedicalBillFields(BaseModel):
     is_medicare_claim: bool
 
 
+class PayStubFields(BaseModel):
+    employer: str
+    # Gross pay for the stub's own period (weekly/biweekly/monthly) --
+    # normalized to a monthly figure in app.docs.profile_merge, the same
+    # way the rules engine expects ss_gross_monthly.
+    gross_pay: float
+    pay_period: str  # "weekly" | "biweekly" | "semimonthly" | "monthly"
+    pay_date: date | None = None
+
+
 class OtherFields(BaseModel):
     summary: str = ""
 
@@ -104,6 +115,7 @@ SCHEMA_BY_TYPE: dict[LetterType, type[BaseModel]] = {
     LetterType.BANK_STATEMENT: BankStatementFields,
     LetterType.HRA_RENEWAL_NOTICE: HraRenewalNoticeFields,
     LetterType.MEDICAL_BILL: MedicalBillFields,
+    LetterType.PAY_STUB: PayStubFields,
     LetterType.MEDICARE_NOTICE: OtherFields,
     LetterType.OTHER: OtherFields,
 }

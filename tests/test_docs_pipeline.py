@@ -213,3 +213,23 @@ def test_users_cannot_open_each_others_letters():
     assert client.get(f"/letters/{letter_id}", headers=auth_headers("bob")).status_code == 404
     assert client.get(f"/letters/{letter_id}").status_code == 401
     assert client.get("/letters/99999", headers=auth_headers("alice")).status_code == 404
+
+
+def test_pay_stub_answers_earned_income_instead_of_asking():
+    """earned_income_monthly is the one fact no other letter type in this
+    app states -- a pay stub should answer it directly, same as an SSA
+    letter's date_of_birth answers "age" instead of being asked."""
+    response = _upload("pay_stub_sample.jpg")
+    assert response.status_code == 200
+    body = response.json()
+
+    assert body["letter_type"] == "pay_stub"
+    assert body["extracted_fields"]["gross_pay"] == 350.0
+    assert body["extracted_fields"]["pay_period"] == "weekly"
+    assert "earned_income_monthly" in body["profile_fields_updated"]
+
+    with Session(engine) as session:
+        profile = session.get(ProfileRecord, "demo")
+        # $350/week * 52/12 = $1,516.67/mo
+        assert profile.earned_income_monthly == pytest.approx(1516.67, abs=0.01)
+        assert profile.is_known("earned_income_monthly")

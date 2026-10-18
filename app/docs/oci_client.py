@@ -189,6 +189,13 @@ _MOCK_TEXT_BY_FILENAME_KEYWORD = {
         "Line item: Annual wellness visit copay $20.00 (copay)\n"
         "This is a Medicare claim."
     ),
+    "stub": (
+        "Sample Grocery Mart\n"
+        "Earnings Statement -- Pay Stub\n"
+        "Chen, Yu-lan\n"
+        "Gross pay this period: $350.00\n"
+        "Pay period: weekly"
+    ),
 }
 
 
@@ -215,6 +222,8 @@ def _mock_classify(raw_text: str) -> LetterType:
         return LetterType.MEDICAL_BILL
     if "medicare" in text and "notice" in text:
         return LetterType.MEDICARE_NOTICE
+    if "pay stub" in text or "earnings statement" in text or "gross pay" in text:
+        return LetterType.PAY_STUB
     return LetterType.OTHER
 
 
@@ -254,6 +263,8 @@ def _mock_extract(letter_type: LetterType, raw_text: str) -> dict:
             ],
             "is_medicare_claim": True,
         }
+    if letter_type == LetterType.PAY_STUB:
+        return {"employer": "Sample Grocery Mart", "gross_pay": 350.00, "pay_period": "weekly"}
     return {"summary": raw_text[:200]}
 
 
@@ -279,6 +290,8 @@ def _mock_explain_zh(letter_type: LetterType, fields: dict) -> str:
             f"{fields['provider']} 给您寄来了一张账单。"
             "如果这是医疗保险 (Medicare) 的收费，而您有 QMB，您可能依法不用付这笔钱。"
         )
+    if letter_type == LetterType.PAY_STUB:
+        return f"这是 {fields['employer']} 给您的工资单。我们用它确认您每月的工作收入。"
     return "这封信的类型我们还不认识。请拿给社工看看。"
 
 
@@ -317,6 +330,8 @@ def _mock_explain(letter_type: LetterType, fields: dict, language: str) -> str:
             "check the Protect tab."
             + note
         )
+    if letter_type == LetterType.PAY_STUB:
+        return f"This is a pay stub from {fields['employer']}. We used it to confirm your monthly work income." + note
     return "This letter doesn't match a known type yet. Please show it to a caseworker." + note
 
 

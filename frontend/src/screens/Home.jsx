@@ -19,6 +19,7 @@ const CATEGORY_TYPES = [
   "medicare_notice",
   "medical_bill",
   "bank_statement",
+  "pay_stub",
   "other",
 ];
 

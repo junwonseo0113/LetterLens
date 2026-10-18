@@ -87,6 +87,10 @@ def _action_items_and_deadline(
             ],
             None,
         )
+    if letter_type == LetterType.PAY_STUB:
+        if zh:
+            return (["不需要做什么。我们用它来确认您每月的工作收入。"], None)
+        return (["No action needed. We used this to confirm your monthly work income."], None)
     if zh:
         return (["如果有不清楚的地方，请拿这封信给社工看看。"], None)
     return (["Review this letter with a caseworker if anything is unclear."], None)
