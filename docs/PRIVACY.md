@@ -45,10 +45,11 @@ anywhere: only "a photo was provided" is recorded. A provided photo is
 
 | Kept (until you delete it) | Not kept |
 |---|---|
-| Confirmed facts per letter type: SSA benefit amounts and effective date; bank ending balance and deposit amounts (descriptions removed); HRA program, deadline and requested documents; medical bill provider, charges and Medicare-claim flag | The photo itself |
+| Confirmed facts per letter type: SSA benefit amounts and effective date; bank ending balance and deposit/rent/utility/medical payment amounts (descriptions removed); HRA program, deadline, requested documents and household size; medical bill provider, charges and Medicare-claim flag; pay stub gross pay and pay period | The photo itself |
 | Name and address from an SSA letter **only if you tick the box** (used to fill in your application) | Full OCR text of the letter |
 | The explanation shown for the letter (generated without your name/address) and which facts you corrected | Free-text summaries of unrecognized letters |
-| Whether the letter was a demo **sample** | Bank deposit descriptions |
+| Whether the letter was a demo **sample** | Bank payment descriptions; pay stub employer and pay date; HRA notice dates, form IDs and interview notes |
+| Age (worked out from an SSA letter's date of birth) | Date of birth from a letter — used once to set age, then dropped |
 | Answers to "More information needed" questions; the eligibility profile built from letters and answers | Unconfirmed drafts (they exist only in your browser tab, and expire after 30 minutes) |
 | Reminders created from renewal notices | |
 | Applications (answers incl. Medicare number, date of birth, phone; signature image; status) | |

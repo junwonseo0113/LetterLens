@@ -16,7 +16,7 @@ from app.apply.normalize import FieldValueError, normalize
 from app.i18n import document_name_zh, is_zh
 from app.keep.reminders import create_reminder, to_reminder_out
 from app.models import LetterRecord, ProfileRecord, Reminder
-from app.privacy import EDITABLE_FIELDS, IDENTIFIER_FIELDS, describe_failure, minimize
+from app.privacy import EDITABLE_FIELDS, IDENTIFIER_FIELDS, describe_failure, minimize, transient
 from app.protect.bill_check import check_qmb_bill
 from app.protect.oci_client import draft_dispute_letter
 from app.protect.schemas import DisputeLetter
@@ -138,7 +138,7 @@ def read_letter(
     return LetterDraftOut(
         draft_token=token,
         letter_type=letter_type,
-        facts=minimize(letter_type.value, fields),
+        facts={**minimize(letter_type.value, fields), **transient(letter_type.value, fields)},
         identifiers=identifiers,
         editable=EDITABLE_FIELDS.get(letter_type.value, {}),
         explanation=explanation,
@@ -224,7 +224,7 @@ def _apply_corrections(letter_type: str, extracted: dict, submitted: dict, save_
         if value != extracted.get(key) and str(value) != str(extracted.get(key)):
             corrected.append(key)
         merged[key] = value
-    return minimize(letter_type, merged, keep_identifiers=save_identifiers), corrected
+    return minimize(letter_type, merged, keep_identifiers=save_identifiers), transient(letter_type, merged), corrected
 
 
 def confirm_letter(
@@ -234,11 +234,11 @@ def confirm_letter(
     update the profile, reminders and bill check from them."""
     draft = open_draft(user_id, draft_token)  # raises DraftInvalid
     letter_type = LetterType(draft["t"])
-    saved, corrected = _apply_corrections(letter_type.value, draft["f"], facts or {}, save_identifiers)
+    saved, used_once, corrected = _apply_corrections(letter_type.value, draft["f"], facts or {}, save_identifiers)
 
     schema = SCHEMA_BY_TYPE[letter_type]
     try:
-        validated = schema.model_validate(saved)
+        validated = schema.model_validate({**saved, **used_once})
     except Exception:
         raise CorrectionError("Some of these facts aren't valid.", "有些内容格式不对。") from None
     fields = saved
@@ -261,6 +261,7 @@ def confirm_letter(
     return _save_and_respond(
         session, Trace(), letter_record, letter_type, validated, fields, action_items, deadline, language,
         reuse_dispute_letter=reuse,
+        used_once=used_once,
     )
 
 
@@ -275,6 +276,7 @@ def _save_and_respond(
     deadline,
     language: str,
     reuse_dispute_letter: dict | None = None,
+    used_once: dict | None = None,
 ) -> LetterUploadResponse:
     user_id = letter_record.user_id
     explanation = letter_record.explanation
@@ -283,7 +285,8 @@ def _save_and_respond(
     session.refresh(letter_record)
 
     profile = _get_or_create_profile(session, user_id)
-    updated_fields = merge_fields_into_profile(profile, letter_type, fields, letter_record.id)
+    # Transient facts (date of birth) update the profile but aren't stored.
+    updated_fields = merge_fields_into_profile(profile, letter_type, {**fields, **(used_once or {})}, letter_record.id)
     session.add(profile)
     session.commit()
 

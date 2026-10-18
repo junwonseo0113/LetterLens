@@ -32,7 +32,7 @@ from sqlmodel import SQLModel, Session  # noqa: E402
 from app.auth.service import user_id_for_phone  # noqa: E402
 from app.db import engine, init_db  # noqa: E402
 from app.benefits.service import save_answer  # noqa: E402
-from app.docs.pipeline import process_letter  # noqa: E402
+from app.docs.pipeline import confirm_letter, read_letter  # noqa: E402
 from app.models import ProfileRecord  # noqa: E402
 
 FIXTURES_DIR = REPO_ROOT / "demo" / "fixtures"
@@ -49,7 +49,17 @@ STEPS = ["find", "keep", "protect"]
 
 def _upload(session: Session, filename: str) -> None:
     image_bytes = (FIXTURES_DIR / filename).read_bytes()
-    process_letter(session=session, image_bytes=image_bytes, filename=filename, language=LANGUAGE, user_id=USER_ID)
+    # The app's two steps: read (saves nothing), then confirm the facts as read
+    # -- including name/address, as a presenter would tick "use for my application".
+    draft = read_letter(session=session, image=image_bytes, filename=filename, language=LANGUAGE, user_id=USER_ID)
+    confirm_letter(
+        session=session,
+        user_id=USER_ID,
+        draft_token=draft.draft_token,
+        facts={**draft.facts, **draft.identifiers},
+        save_identifiers=True,
+        language=LANGUAGE,
+    )
     print(f"  uploaded {filename}")
 
 

@@ -10,7 +10,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import SQLModel
 
-from tests.conftest import auth_headers
+from tests.conftest import auth_headers, upload_letter
 
 from app.db import engine
 from app.main import app
@@ -26,12 +26,8 @@ def _reset_db():
 
 
 def _upload(filename: str, headers: dict, language: str = "zh"):
-    response = client.post(
-        "/letters",
-        files={"file": (filename, io.BytesIO(b"fake-image-bytes"), "image/jpeg")},
-        data={"language": language},
-        headers=headers,
-    )
+    # Read the photo, then confirm the facts as read (the app's two steps).
+    response = upload_letter(client, filename, headers, language)
     assert response.status_code == 200, response.json()
     return response.json()
 

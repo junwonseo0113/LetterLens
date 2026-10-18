@@ -291,7 +291,7 @@ def _mock_explain_zh(letter_type: LetterType, fields: dict) -> str:
             "如果这是医疗保险 (Medicare) 的收费，而您有 QMB，您可能依法不用付这笔钱。"
         )
     if letter_type == LetterType.PAY_STUB:
-        return f"这是 {fields['employer']} 给您的工资单。我们用它确认您每月的工作收入。"
+        return f"这张工资单显示您每期（{fields['pay_period']}）的税前工资是 ${fields['gross_pay']:,.2f}。我们用它计算您每月的工作收入。"
     return "这封信的类型我们还不认识。请拿给社工看看。"
 
 
@@ -331,7 +331,10 @@ def _mock_explain(letter_type: LetterType, fields: dict, language: str) -> str:
             + note
         )
     if letter_type == LetterType.PAY_STUB:
-        return f"This is a pay stub from {fields['employer']}. We used it to confirm your monthly work income." + note
+        return (
+            f"This pay stub shows ${fields['gross_pay']:,.2f} gross pay per {fields['pay_period']} period. "
+            "We used it to work out your monthly work income."
+        ) + note
     return "This letter doesn't match a known type yet. Please show it to a caseworker." + note
 
 

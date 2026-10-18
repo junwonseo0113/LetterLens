@@ -97,7 +97,8 @@ class MedicalBillFields(BaseModel):
 
 
 class PayStubFields(BaseModel):
-    employer: str
+    # Read but not kept (see app.privacy.SAVED_FIELDS), so optional here.
+    employer: str | None = None
     # Gross pay for the stub's own period (weekly/biweekly/monthly) --
     # normalized to a monthly figure in app.docs.profile_merge, the same
     # way the rules engine expects ss_gross_monthly.

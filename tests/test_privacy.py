@@ -349,3 +349,33 @@ def test_explanation_only_sees_saved_facts(monkeypatch):
     monkeypatch.setattr(oci_client, "explain_letter", lambda t, f, lang: seen.append(f) or real(t, f, lang))
     _read("bank_sample.jpg")
     assert seen[0]["recurring_deposits"] == [{"description": "", "amount": 1700.0}]
+
+
+def test_date_of_birth_sets_age_but_is_not_stored(monkeypatch):
+    from app.docs import oci_client
+
+    real_extract = oci_client._mock_extract
+
+    def with_dob(letter_type, raw_text):
+        fields = real_extract(letter_type, raw_text)
+        if letter_type.value == "ssa_benefit_letter":
+            fields["date_of_birth"] = "1952-03-05"
+        return fields
+
+    monkeypatch.setattr(oci_client, "_mock_extract", with_dob)
+    draft = _read("ssa_sample.jpg").json()
+    assert draft["facts"]["date_of_birth"] == "1952-03-05"  # shown and correctable
+    saved = _confirm(draft).json()
+    assert "date_of_birth" not in saved["extracted_fields"]
+    with Session(engine) as session:
+        profile = session.get(ProfileRecord, ALICE)
+        assert profile.age >= 74 and profile.is_known("age")
+        record = session.exec(select(LetterRecord)).one()
+        assert "1952" not in str(record.extracted_fields) and "1952" not in (record.explanation or "")
+
+
+def test_pay_stub_keeps_pay_but_not_employer_or_pay_date():
+    draft = _read("pay_stub_sample.jpg").json()
+    assert draft["letter_type"] == "pay_stub"
+    saved = _confirm(draft).json()
+    assert set(saved["extracted_fields"]) == {"gross_pay", "pay_period"}
