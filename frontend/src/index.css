@@ -54,9 +54,16 @@
   --color-tile-green: #dcf3e3;
   --color-tile-blue: #dde9fd;
 
+  /* "PingFang SC" covers Chinese on Mac/iOS; "Microsoft YaHei"/"Noto
+     Sans SC" cover it on Windows/Linux, where PingFang isn't installed.
+     Named system fallbacks only -- not a bundled webfont (a full CJK
+     charset is 10MB+), so a system with none of these still falls
+     through to the browser's generic sans-serif, which still renders
+     Chinese/Korean correctly, just not in this exact typeface. */
   --font-ui:
     -apple-system, BlinkMacSystemFont, "SF Pro Text", "Atkinson Hyperlegible", "Malgun Gothic",
-    "Apple SD Gothic Neo", "PingFang SC", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    "Apple SD Gothic Neo", "PingFang SC", "Microsoft YaHei", "Noto Sans SC", "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
 
   /* Set by FontScaleProvider (inline style on the root element); the
      "가/가" header button cycles this through 1 / 1.15 / 1.3. */
