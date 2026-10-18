@@ -210,6 +210,8 @@ tests/          97 tests: rules engine (A-J), document pipeline, explain,
 demo/           M7 -- fixtures, seed script, full persona walkthrough script
 frontend/       M6 -- React + Vite UI: language, sign-in, letters, benefits,
                 apply interview / review / status, caseworker queue
+main.tf, modules/, schema.yaml, *.tf
+                OCI Hackathon Starter Kit Terraform (deployment, not yet wired up)
 ```
 
 ## Setup
@@ -332,10 +334,15 @@ against the linked SSA / NY State page before presenting this to judges.**
 
 ## Git history
 
-`main` still holds only the original OCI starter-kit Terraform; all
-application code lives on the **`letterlens`** branch, which is the
-branch to work from and push to. Each milestone was built on its own
-branch and then fast-forwarded into `letterlens`:
+`main` and `letterlens` now point at the same history. `main` started as
+the OCI Hackathon Starter Kit Terraform (`main.tf`, `modules/`,
+`schema.yaml`) and the app was built separately on `letterlens`; the two
+unrelated histories were merged so both are kept. The Terraform is what
+you'd use to deploy the app to OCI (Compute + MySQL HeatWave / Autonomous
+DB); it isn't wired to the app yet.
+
+App milestones, each built on its own branch and fast-forwarded into
+`letterlens`:
 
 `m1-rules-engine` -> `m2-tests` -> `m3-document-pipeline` ->
 `m4-explanation-layer` -> `m5-keep-protect` -> `m7-demo-fixtures` ->
