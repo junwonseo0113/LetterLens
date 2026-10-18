@@ -1,9 +1,14 @@
-fastapi
-uvicorn[standard]
-sqlmodel
-python-multipart
-httpx
-pytest
+# Pinned to the versions the test suite was last verified against --
+# unpinned installs broke 28 tests when sqlmodel started rejecting naive
+# datetimes.
+fastapi==0.143.3
+uvicorn[standard]==0.54.0
+sqlmodel==0.0.48
+SQLAlchemy==2.1.5
+pydantic==2.14.1
+python-multipart==0.0.32
+httpx==0.28.1
+pytest==9.1.1
 
 # Only required when MOCK_MODE=false (real OCI calls):
 # oci

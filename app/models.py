@@ -7,7 +7,7 @@ extraction.
 
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import Optional
 
 from sqlmodel import JSON, Column, Field, SQLModel
@@ -58,7 +58,7 @@ class LetterRecord(SQLModel, table=True):
     user_id: str
     letter_type: str
     extracted_fields: dict = Field(default_factory=dict, sa_column=Column(JSON))
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class Reminder(SQLModel, table=True):
@@ -68,4 +68,4 @@ class Reminder(SQLModel, table=True):
     program: str
     deadline: date
     checklist: list[str] = Field(default_factory=list, sa_column=Column(JSON))
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
