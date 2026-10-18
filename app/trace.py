@@ -18,6 +18,7 @@ Two related jobs:
 from __future__ import annotations
 
 import contextvars
+import logging
 import os
 import time
 from contextlib import contextmanager
@@ -27,6 +28,8 @@ from typing import Callable, TypeVar
 from pydantic import BaseModel
 
 T = TypeVar("T")
+
+log = logging.getLogger("letterlens.oci")
 
 _fallback_used: contextvars.ContextVar[bool] = contextvars.ContextVar("fallback_used", default=False)
 
@@ -61,6 +64,9 @@ def call_with_fallback(real: Callable[[], T], mock: Callable[[], T]) -> T:
     try:
         return real()
     except Exception:
+        # Loud on purpose: a silent fallback makes canned demo data look
+        # like a live OCI answer.
+        log.warning("Real OCI call failed; using the offline fallback", exc_info=True)
         mark_fallback_used()
         return mock()
 

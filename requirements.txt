@@ -10,5 +10,5 @@ python-multipart==0.0.32
 httpx==0.28.1
 pytest==9.1.1
 
-# Only required when MOCK_MODE=false (real OCI calls):
-# oci
+# Only required when MOCK_MODE=false (real OCI calls) -- install separately:
+#   .venv/bin/pip install oci==2.188.0

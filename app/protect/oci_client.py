@@ -12,7 +12,7 @@ from __future__ import annotations
 import json
 
 from app.number_guard import assert_numbers_preserved
-from app.oci_genai import genai_chat
+from app.oci_genai import genai_chat, language_name
 from app.trace import call_with_fallback
 
 from .schemas import DisputeLetter, FlaggedLineItem
@@ -79,7 +79,7 @@ def _mock_translate(
 
 def _real_translate(english: str, language: str) -> str:
     prompt = (
-        f"Translate this letter into {language}. Never change any number, date, or dollar amount -- "
+        f"Translate this letter into {language_name(language)}. Never change any number, date, or dollar amount -- "
         f"keep program names like QMB in parentheses in English.\n\n{english}"
     )
     translated = genai_chat(prompt)

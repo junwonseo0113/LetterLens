@@ -12,7 +12,7 @@ from __future__ import annotations
 import json
 
 from app.number_guard import assert_numbers_preserved
-from app.oci_genai import genai_chat
+from app.oci_genai import genai_chat, language_name
 from app.rules.engine import ProgramResult
 from app.trace import call_with_fallback
 
@@ -81,9 +81,10 @@ def _mock_explain(result: ProgramResult, language: str) -> str:
 def _real_explain(result: ProgramResult, language: str) -> str:
     source_text = _source_text(result)
     prompt = (
-        f"Explain this benefits result to someone reading at a 6th-grade level, in {language}, "
-        "in 2-4 short sentences. Never change any number, date, dollar amount, or program name -- "
-        f"keep official English program names in parentheses. Data: {source_text}"
+        f"Explain this benefits result to an older adult reading at a 6th-grade level, in {language_name(language)}, "
+        "in 2-4 short sentences. Copy every number, date and dollar amount exactly as given and add no "
+        "other numbers; keep official English program names in parentheses. "
+        f"Data: {source_text}"
     )
     output = genai_chat(prompt)
     assert_numbers_preserved(output, source_text)

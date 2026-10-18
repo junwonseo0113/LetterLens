@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -11,6 +12,10 @@ from app.benefits import router as benefits_router
 from app.db import init_db
 from app.docs import router as letters_router
 from app.keep import router as reminders_router
+
+
+# Show real-OCI failures (see app.trace.call_with_fallback) in the server log.
+logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 
 
 @asynccontextmanager

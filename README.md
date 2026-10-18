@@ -252,7 +252,7 @@ Root `.env` (backend, see `.env.example`):
 | `OCI_CONFIG_PROFILE` | `DEFAULT` | Only read when `MOCK_MODE=false` |
 | `OCI_COMPARTMENT_ID` | _(empty)_ | Required when `MOCK_MODE=false` |
 | `OCI_GENAI_MODEL_ID` | _(empty)_ | Required when `MOCK_MODE=false` |
-| `OCI_REGION` | `us-chicago-1` | Only read when `MOCK_MODE=false` |
+| `OCI_REGION` | `us-chicago-1` | Overrides the config file's region (GenAI is only in a few regions) |
 | `DEMO_SHOW_OTP` | `true` | Return the sign-in code in the API response (no SMS provider yet) |
 | `CASEWORKER_KEY` | `demo-caseworker` | Shared key for the `/review-queue` endpoints |
 
@@ -268,14 +268,30 @@ Never commit `.env` or `.env.local` — both are gitignored.
 ## Running the tests
 
 ```bash
-python3 -m pytest -q          # 97 tests: pure functions + FastAPI TestClient, no servers needed, MOCK_MODE only
+python3 -m pytest -q          # 113 tests: no servers or network needed; real-OCI parsing is tested with fake SDK responses
 cd frontend && npm run build && npm run lint
 ```
 
-If you intend to demo with `MOCK_MODE=false`, run `python3 scripts/check_oci.py`
-first (with real OCI credentials set) -- it calls OCI Document Understanding
-and OCI Generative AI once each and prints OK/FAIL, so a broken credential
-or region surfaces before you're on stage, not during.
+### Real OCI mode
+
+1. `.venv/bin/pip install oci` (not in `requirements.txt`; only real mode needs it).
+2. Put an API key in `~/.oci/config` (Console -> profile -> My profile -> API keys).
+3. In `.env`: `MOCK_MODE=false`, `OCI_COMPARTMENT_ID`, `OCI_GENAI_MODEL_ID` (a
+   **Cohere** chat model, e.g. `cohere.command-a-03-2025`), and
+   `OCI_REGION=us-chicago-1` -- this overrides the config file's region, since
+   Generative AI only runs in a few regions.
+4. `.venv/bin/python scripts/check_oci.py` -- reads `.env` itself and runs the
+   real pipeline on a sample letter with no mock fallback: config, GenAI chat,
+   Document Understanding OCR, classify, extract, and Chinese explanations.
+   Each failure prints the Oracle error plus a hint.
+5. Run the app with the same settings:
+   `.venv/bin/uvicorn app.main:app --env-file .env --port 8000` (plain
+   `uvicorn` does **not** read `.env`).
+
+In the running app any failed OCI call falls back to the offline answer so
+the demo never breaks -- but it's logged (`WARNING letterlens.oci: Real OCI
+call failed ...` with the Oracle error) and the "How this was processed"
+panel marks that step "(offline fallback)".
 
 ## Running the demo
 

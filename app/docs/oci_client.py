@@ -22,7 +22,7 @@ from dataclasses import dataclass
 
 from app.i18n import document_name_zh
 from app.number_guard import assert_numbers_preserved
-from app.oci_genai import genai_chat, oci_config
+from app.oci_genai import genai_chat, language_name, oci_config, parse_json_object
 from app.trace import call_with_fallback
 
 from .schemas import SCHEMA_BY_TYPE, LetterType
@@ -195,43 +195,37 @@ def _real_ocr(image_bytes: bytes) -> OcrResult:
     import base64
 
     import oci
-    from oci.ai_document.models import (
-        AnalyzeDocumentDetails,
-        DocumentKeyValueExtractionFeature,
-        DocumentTextExtractionFeature,
-        InlineDocumentDetails,
-    )
+    from oci.ai_document.models import AnalyzeDocumentDetails, DocumentTextExtractionFeature, InlineDocumentDetails
 
-    config = oci_config()
-    client = oci.ai_document.AIServiceDocumentClient(config)
+    client = oci.ai_document.AIServiceDocumentClient(oci_config(), timeout=(10, 60))
+    # Text extraction only: key-value extraction is limited to specific
+    # document types (receipts, invoices, IDs), not general letters --
+    # GenAI does the field extraction from the text instead.
     details = AnalyzeDocumentDetails(
         document=InlineDocumentDetails(data=base64.b64encode(image_bytes).decode("utf-8")),
         compartment_id=os.environ["OCI_COMPARTMENT_ID"],
-        features=[DocumentTextExtractionFeature(), DocumentKeyValueExtractionFeature()],
+        features=[DocumentTextExtractionFeature()],
     )
     response = client.analyze_document(analyze_document_details=details)
     pages = response.data.pages or []
-    raw_text = "\n".join(line.text for page in pages for line in (page.lines or []))
-    key_values = {
-        field.field_label.name: field.field_value.value
-        for page in pages
-        for field in (page.document_fields or [])
-        if field.field_label and field.field_value
-    }
-    return OcrResult(raw_text=raw_text, key_values=key_values)
+    raw_text = "\n".join(line.text for page in pages for line in (page.lines or []) if line.text)
+    if not raw_text.strip():
+        raise RuntimeError("OCI Document Understanding found no text in the image")
+    return OcrResult(raw_text=raw_text, key_values={})
 
 
 def _real_classify(raw_text: str) -> LetterType:
+    labels = [t.value for t in LetterType]
     prompt = (
-        "Classify this letter into exactly one label: ssa_benefit_letter, "
-        "bank_statement, medicare_notice, hra_renewal_notice, medical_bill, other. "
+        "Classify this letter into exactly one label: " + ", ".join(labels) + ". "
         "Reply with only the label.\n\nLetter text:\n" + raw_text
     )
-    label = genai_chat(prompt).strip().lower()
-    try:
-        return LetterType(label)
-    except ValueError:
-        return LetterType.OTHER
+    reply = genai_chat(prompt).strip().lower()
+    # Tolerate "ssa_benefit_letter.", quotes, or a short sentence around it.
+    for label in sorted(labels, key=len, reverse=True):
+        if label in reply:
+            return LetterType(label)
+    return LetterType.OTHER
 
 
 def _real_extract(letter_type: LetterType, raw_text: str, key_values: dict, retry_after_invalid: bool) -> dict:
@@ -242,20 +236,21 @@ def _real_extract(letter_type: LetterType, raw_text: str, key_values: dict, retr
         else ""
     )
     prompt = (
-        f"{instruction}Extract fields as JSON only, matching this schema: "
-        f"{schema.model_json_schema()}. Do not invent values not present in the text. "
-        f"Letter text:\n{raw_text}\n\nKey-values already extracted: {key_values}"
+        f"{instruction}Extract fields as a JSON object only, matching this JSON schema: "
+        f"{json.dumps(schema.model_json_schema())}. Use numbers (no $ or commas) for amounts and "
+        "YYYY-MM-DD for dates. Do not invent values not present in the text; use null for "
+        f"optional fields you can't find.\n\nLetter text:\n{raw_text}"
     )
-    output = genai_chat(prompt)
-    return json.loads(output)
+    return parse_json_object(genai_chat(prompt, json_mode=True))
 
 
 def _real_explain(letter_type: LetterType, fields: dict, language: str) -> str:
-    source_text = json.dumps(fields)
+    source_text = json.dumps(fields, ensure_ascii=False)
     prompt = (
-        f"Explain this {letter_type.value} to someone reading at a 6th-grade level, in {language}, "
-        "in 2-4 short sentences. Never change any number, date, dollar amount, or program name -- "
-        f"keep official English program names in parentheses. Data: {source_text}"
+        f"Explain this {letter_type.value.replace('_', ' ')} to an older adult reading at a 6th-grade level, "
+        f"in {language_name(language)}, in 2-4 short sentences. Copy every number, date and dollar amount "
+        "exactly as given and add no other numbers; keep official English program names in parentheses. "
+        f"Data: {source_text}"
     )
     output = genai_chat(prompt)
     assert_numbers_preserved(output, source_text)
