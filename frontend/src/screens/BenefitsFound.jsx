@@ -1,14 +1,18 @@
-import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect } from "react";
+import { Link, useLocation } from "react-router-dom";
 import BigButton from "../components/BigButton";
+import ErrorBox from "../components/ErrorBox";
 import IconBadge from "../components/IconBadge";
 import Layout from "../components/Layout";
+import MissingInfoQuestions from "../components/MissingInfoQuestions";
+import { SampleNote } from "../components/SampleBadge";
 import TracePanel from "../components/TracePanel";
 import { useAuth } from "../context/useAuth";
 import { useLanguage } from "../context/useLanguage";
 import { STATUS_KEY, confidenceLabel, numberLabel, t } from "../strings";
 import { formatMoney } from "../format";
 import { fetchBenefits } from "../api";
+import { useLoad } from "../hooks/useLoad";
 import { benefitTone } from "../benefitTone";
 import { speechLang } from "../speech";
 
@@ -26,28 +30,53 @@ function readAloud(text, lang) {
 export default function BenefitsFound() {
   const { language } = useLanguage();
   const { token } = useAuth();
-  const requestKey = `${token}:${language}`;
-  // Which request the shown data belongs to; loading until it matches.
-  const [loaded, setLoaded] = useState({ key: null, benefits: [], trace: [] });
-  const loading = loaded.key !== requestKey;
-  const { benefits, trace } = loaded;
+  const location = useLocation();
+  const { loading, data, error, reload } = useLoad(() => fetchBenefits(token, language || "en"), [token, language]);
+  const benefits = data?.results || [];
+  const trace = data?.trace || [];
 
+  // Arriving from "Answer questions" on Home: jump to the questions.
   useEffect(() => {
-    fetchBenefits(token, language || "en")
-      .then((data) => setLoaded({ key: requestKey, benefits: data.results, trace: data.trace }))
-      .catch(() => setLoaded({ key: requestKey, benefits: [], trace: [] }));
-  }, [token, language, requestKey]);
+    if (data && location.hash === "#questions") {
+      document.getElementById("questions")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [data, location.hash]);
 
   const canApplyMsp = benefits.some(
     (b) => MSP_PROGRAMS.has(b.program) && (b.status === "likely" || b.status === "possible"),
   );
 
   const relevant = benefits.filter((b) => b.status === "likely" || b.status === "possible");
-  const notNow = benefits.filter((b) => b.status !== "likely" && b.status !== "possible");
+  const needInfo = benefits.filter((b) => b.status === "missing_info");
+  const notNow = benefits.filter((b) => !["likely", "possible", "missing_info"].includes(b.status));
 
   return (
     <Layout title={t(language, "benefitsFoundTitle")} backTo="/home">
       {loading && <p className="spinner-wrap">{t(language, "loading")}</p>}
+      {error && <ErrorBox title={t(language, "errLoadBenefits")} error={error} onRetry={reload} />}
+      {data?.uses_sample_data && <SampleNote textKey="sampleBenefitsNote" />}
+
+      {data && <MissingInfoQuestions questions={data.questions} onAnswered={reload} />}
+
+      {!loading && needInfo.length > 0 && (
+        <div className="section">
+          <h3>{t(language, "missingInfoTitle")}</h3>
+          <div className="ios-list">
+            {needInfo.map((b) => (
+              <details key={b.program} className="nav-row-details">
+                <summary className="nav-row">
+                  <IconBadge kind={b.program} size={32} />
+                  <span style={{ flex: 1 }}>{b.program}</span>
+                  <span className="status-text missing_info">{t(language, STATUS_KEY[b.status])}</span>
+                </summary>
+                <div className="nav-row-details-body">
+                  <p className="review-source">{b.rule_applied}</p>
+                </div>
+              </details>
+            ))}
+          </div>
+        </div>
+      )}
 
       {!loading && relevant.length > 0 && (
         <div className="section">

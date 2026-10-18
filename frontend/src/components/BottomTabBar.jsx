@@ -1,10 +1,10 @@
-import { useRef, useState } from "react";
+import { useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import CameraIcon from "./CameraIcon";
-import { useAuth } from "../context/useAuth";
 import { useLanguage } from "../context/useLanguage";
 import { t } from "../strings";
-import { uploadLetter } from "../api";
+import { useLetterUpload } from "../hooks/useLetterUpload";
+import ErrorBox from "./ErrorBox";
 
 function TabIcon({ icon, active }) {
   const color = active ? "var(--color-primary)" : "var(--color-muted)";
@@ -54,28 +54,10 @@ function TabIcon({ icon, active }) {
 
 export default function BottomTabBar() {
   const { language } = useLanguage();
-  const { token } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const fileInputRef = useRef(null);
-  const [uploading, setUploading] = useState(false);
-
-  async function handleFileChange(event) {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file) return;
-
-    setUploading(true);
-    try {
-      const result = await uploadLetter({ file, language: language || "en", token });
-      navigate("/letter-result", { state: { result } });
-    } catch {
-      // Home's own upload button surfaces detailed errors; the tab bar's
-      // scan shortcut fails quietly rather than showing a toast here.
-    } finally {
-      setUploading(false);
-    }
-  }
+  const { uploading, error, onFileChange, retry, dismiss } = useLetterUpload();
 
   function goToLetters() {
     navigate("/home", { state: { scrollTo: "past-letters" } });
@@ -87,13 +69,18 @@ export default function BottomTabBar() {
 
   return (
     <nav className="tab-bar no-print">
+      {error && (
+        <div className="tab-bar-toast">
+          <ErrorBox title={t(language, "errUpload")} error={error} onRetry={retry} onDismiss={dismiss} />
+        </div>
+      )}
       <input
         ref={fileInputRef}
         type="file"
         accept="image/*"
         capture="environment"
         style={{ display: "none" }}
-        onChange={handleFileChange}
+        onChange={onFileChange}
       />
 
       <button className="tab-bar-item" type="button" onClick={() => navigate("/home")}>

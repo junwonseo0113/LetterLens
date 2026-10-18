@@ -1,13 +1,17 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import AppHeader from "../components/AppHeader";
 import CameraIcon from "../components/CameraIcon";
+import ErrorBox from "../components/ErrorBox";
 import IconBadge from "../components/IconBadge";
+import { SampleBadge, SampleNote } from "../components/SampleBadge";
 import { useAuth } from "../context/useAuth";
 import { useLanguage } from "../context/useLanguage";
 import { STATUS_KEY, letterTypeLabel, t } from "../strings";
-import { fetchBenefits, fetchLetters, fetchOnQmb, fetchReminders, setOnQmb, uploadLetter } from "../api";
+import { fetchBenefits, fetchLetters, fetchOnQmb, fetchReminders, setOnQmb } from "../api";
 import { benefitTone } from "../benefitTone";
+import { useLetterUpload } from "../hooks/useLetterUpload";
+import { useLoad } from "../hooks/useLoad";
 
 const CATEGORY_TYPES = [
   "ssa_benefit_letter",
@@ -18,28 +22,26 @@ const CATEGORY_TYPES = [
   "other",
 ];
 
+// Shown on Home: programs you may qualify for, and ones we can't decide yet.
+const SHOWN_STATUSES = new Set(["likely", "possible", "missing_info"]);
+
 export default function Home() {
   const { language } = useLanguage();
   const { token, signOut } = useAuth();
-  const navigate = useNavigate();
   const location = useLocation();
   const fileInputRef = useRef(null);
   const pastLettersRef = useRef(null);
   const qmbUserTouchedRef = useRef(false);
-  const [letters, setLetters] = useState([]);
-  const [reminders, setReminders] = useState([]);
-  const [benefits, setBenefits] = useState([]);
-  const [uploading, setUploading] = useState(false);
-  const [error, setError] = useState("");
   const [onQmb, setOnQmbState] = useState(false);
   const [qmbSaving, setQmbSaving] = useState(false);
+  const [qmbError, setQmbError] = useState(false);
+  const upload = useLetterUpload();
+
+  const letters = useLoad(() => fetchLetters(token), [token]);
+  const reminders = useLoad(() => fetchReminders(token), [token]);
+  const benefits = useLoad(() => fetchBenefits(token, language || "en"), [token, language]);
 
   useEffect(() => {
-    fetchLetters(token).then(setLetters).catch(() => {});
-    fetchReminders(token).then(setReminders).catch(() => {});
-    fetchBenefits(token, language || "en")
-      .then((data) => setBenefits(data.results || []))
-      .catch(() => {});
     fetchOnQmb(token)
       .then((data) => {
         // Ignore this if the user already toggled the switch themselves
@@ -48,7 +50,7 @@ export default function Home() {
         if (!qmbUserTouchedRef.current) setOnQmbState(data.on_qmb);
       })
       .catch(() => {});
-  }, [token, language]);
+  }, [token]);
 
   useEffect(() => {
     if (location.state?.scrollTo === "past-letters") {
@@ -61,39 +63,19 @@ export default function Home() {
     qmbUserTouchedRef.current = true;
     setOnQmbState(next);
     setQmbSaving(true);
+    setQmbError(false);
     try {
       await setOnQmb(token, next);
     } catch {
       setOnQmbState(!next); // revert on failure
+      setQmbError(true);
     } finally {
       setQmbSaving(false);
     }
   }
 
-  async function handleFileChange(event) {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file) return;
-
-    setUploading(true);
-    setError("");
-    try {
-      const result = await uploadLetter({ file, language: language || "en", token });
-      navigate("/letter-result", { state: { result } });
-    } catch (err) {
-      setError(err.message || t(language, "error"));
-    } finally {
-      setUploading(false);
-    }
-  }
-
-  // With zero letters uploaded, the rules engine still runs against an
-  // empty profile -- and a $0-income household trivially clears every
-  // income ceiling, so it would otherwise show as "likely qualifies" for
-  // SNAP before any real data exists. Only show results once there's at
-  // least one letter backing them.
-  const relevantBenefits =
-    letters.length === 0 ? [] : benefits.filter((b) => b.status === "likely" || b.status === "possible");
+  const shownBenefits = (benefits.data?.results || []).filter((b) => SHOWN_STATUSES.has(b.status));
+  const questionCount = benefits.data?.questions?.length || 0;
 
   return (
     <div className="app-shell">
@@ -106,15 +88,29 @@ export default function Home() {
           accept="image/*"
           capture="environment"
           style={{ display: "none" }}
-          onChange={handleFileChange}
+          onChange={upload.onFileChange}
         />
-        <button type="button" className="scan-bar" onClick={() => fileInputRef.current?.click()}>
-          <span className="scan-bar-label">{uploading ? t(language, "uploading") : t(language, "scanPrompt")}</span>
+        <button
+          type="button"
+          className="scan-bar"
+          disabled={upload.uploading}
+          onClick={() => fileInputRef.current?.click()}
+        >
+          <span className="scan-bar-label">
+            {upload.uploading ? t(language, "uploading") : t(language, "scanPrompt")}
+          </span>
           <span className="scan-bar-icon" aria-hidden="true">
             <CameraIcon size={20} />
           </span>
         </button>
-        {error && <p style={{ color: "var(--color-danger)" }}>{error}</p>}
+        {upload.error && (
+          <ErrorBox
+            title={t(language, "errUpload")}
+            error={upload.error}
+            onRetry={upload.retry}
+            onDismiss={upload.dismiss}
+          />
+        )}
       </div>
 
       <div className="section">
@@ -125,6 +121,7 @@ export default function Home() {
               key={type}
               type="button"
               className="category-card"
+              disabled={upload.uploading}
               onClick={() => fileInputRef.current?.click()}
             >
               <IconBadge kind={type} size={32} />
@@ -141,36 +138,60 @@ export default function Home() {
             {t(language, "seeAll")} {"›"}
           </Link>
         </div>
-        {relevantBenefits.length > 0 ? (
-          <div className="benefit-tile-row">
-            {relevantBenefits.map((b) => (
-              <Link key={b.program} to="/benefits" className={`benefit-tile tone-${benefitTone(b.program)}`}>
-                <div>
-                  <div className="benefit-tile-title">{b.program}</div>
-                  <div className="benefit-tile-sub">{t(language, STATUS_KEY[b.status])}</div>
-                </div>
-                <IconBadge kind={b.program} size={28} />
+        {benefits.loading && <p className="muted-line">{t(language, "loading")}</p>}
+        {benefits.error && (
+          <ErrorBox title={t(language, "errLoadBenefits")} error={benefits.error} onRetry={benefits.reload} />
+        )}
+        {benefits.data && (
+          <>
+            {questionCount > 0 && (
+              <Link to="/benefits#questions" className="missing-info-prompt">
+                <strong>{t(language, "missingInfoTitle")}</strong>
+                <span>{t(language, "missingInfoCount", { n: questionCount })}</span>
+                <span className="nav-row-chevron">{"›"}</span>
               </Link>
-            ))}
-          </div>
-        ) : (
-          <div className="ios-list">
-            <Link to="/benefits" className="nav-row">
-              {t(language, "viewBenefits")}
-              <span className="nav-row-chevron">{"›"}</span>
-            </Link>
-          </div>
+            )}
+            {benefits.data.uses_sample_data && <SampleNote textKey="sampleBenefitsNote" />}
+            {shownBenefits.length > 0 ? (
+              <div className="benefit-tile-row">
+                {shownBenefits.map((b) => (
+                  <Link
+                    key={b.program}
+                    to={b.status === "missing_info" ? "/benefits#questions" : "/benefits"}
+                    className={`benefit-tile tone-${b.status === "missing_info" ? "gray" : benefitTone(b.program)}`}
+                  >
+                    <div>
+                      <div className="benefit-tile-title">{b.program}</div>
+                      <div className="benefit-tile-sub">{t(language, STATUS_KEY[b.status])}</div>
+                    </div>
+                    <IconBadge kind={b.program} size={28} />
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <div className="ios-list">
+                <Link to="/benefits" className="nav-row">
+                  {t(language, "viewBenefits")}
+                  <span className="nav-row-chevron">{"›"}</span>
+                </Link>
+              </div>
+            )}
+          </>
         )}
       </div>
 
       <div className="section">
         <h3>{t(language, "upcomingDeadlines")}</h3>
-        {reminders.length === 0 ? (
-          <p>{t(language, "noDeadlines")}</p>
-        ) : (
+        {reminders.loading && <p className="muted-line">{t(language, "loading")}</p>}
+        {/* A failed request is an error, never "No upcoming deadlines". */}
+        {reminders.error && (
+          <ErrorBox title={t(language, "errLoadDeadlines")} error={reminders.error} onRetry={reminders.reload} />
+        )}
+        {reminders.data && reminders.data.length === 0 && <p>{t(language, "noDeadlines")}</p>}
+        {reminders.data && reminders.data.length > 0 && (
           <div className="ios-list">
-            {reminders.map((r) => (
-              <div key={r.id} className="reminder-item">
+            {reminders.data.map((r) => (
+              <Link key={r.id} to="/application-pack" className="reminder-item">
                 <IconBadge kind={r.program} size={36} />
                 <span style={{ flex: 1 }}>
                   {r.program}
@@ -185,7 +206,7 @@ export default function Home() {
                 <span>
                   {r.overdue ? t(language, "overdue") : `${r.days_until_deadline} ${t(language, "daysLeft")}`}
                 </span>
-              </div>
+              </Link>
             ))}
           </div>
         )}
@@ -200,6 +221,7 @@ export default function Home() {
             <span className="ios-switch-thumb" />
           </label>
         </div>
+        {qmbError && <p className="form-error">{t(language, "errSave")}</p>}
         <p style={{ color: "var(--color-muted)", fontSize: "var(--font-size-xs)", margin: "6px 0 0 4px" }}>
           {t(language, "qmbToggleHelp")}
         </p>
@@ -216,18 +238,22 @@ export default function Home() {
 
       <div className="section" ref={pastLettersRef} id="past-letters">
         <h3>{t(language, "pastLetters")}</h3>
-        {letters.length === 0 ? (
-          <p>{t(language, "noLettersYet")}</p>
-        ) : (
+        {letters.loading && <p className="muted-line">{t(language, "loading")}</p>}
+        {letters.error && (
+          <ErrorBox title={t(language, "errLoadLetters")} error={letters.error} onRetry={letters.reload} />
+        )}
+        {letters.data && letters.data.length === 0 && <p>{t(language, "noLettersYet")}</p>}
+        {letters.data && letters.data.length > 0 && (
           <div className="ios-list">
-            {letters.map((l) => (
-              <div key={l.id} className="letter-list-item">
+            {letters.data.map((l) => (
+              <Link key={l.id} to={`/letters/${l.id}`} className="letter-list-item">
                 <IconBadge kind={l.letter_type} size={36} />
-                <span style={{ flex: 1 }}>{letterTypeLabel(language, l.letter_type)}</span>
-                <span style={{ color: "var(--color-muted)" }}>
-                  {new Date(l.created_at).toLocaleDateString()}
+                <span style={{ flex: 1 }}>
+                  {letterTypeLabel(language, l.letter_type)} {l.is_sample && <SampleBadge />}
                 </span>
-              </div>
+                <span style={{ color: "var(--color-muted)" }}>{new Date(l.created_at).toLocaleDateString()}</span>
+                <span className="nav-row-chevron">{"›"}</span>
+              </Link>
             ))}
           </div>
         )}

@@ -37,6 +37,12 @@ def merge_fields_into_profile(
                 profile.set_provenance("bank_deposit_monthly", letter_id)
                 updated.append("bank_deposit_monthly")
 
+    elif letter_type == LetterType.MEDICARE_NOTICE:
+        # A Medicare notice addressed to them documents Medicare enrollment.
+        profile.has_medicare = True
+        profile.set_provenance("has_medicare", letter_id)
+        updated.append("has_medicare")
+
     # hra_renewal_notice and medical_bill don't update numeric Profile
     # fields -- they drive Reminders and the QMB bill check (M5) instead.
 

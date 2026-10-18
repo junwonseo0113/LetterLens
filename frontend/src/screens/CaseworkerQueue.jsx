@@ -1,17 +1,29 @@
 import { useCallback, useEffect, useState } from "react";
 import { approveApplication, fetchReviewQueue, requestMoreInfo } from "../api";
-import { displayValue, documentLabel, label } from "../applicationFields";
+import { DOC_STATUS_KEY, displayValue, documentLabel, label } from "../applicationFields";
 import { useLanguage } from "../context/useLanguage";
 import { t } from "../strings";
 
 // Staff screen, English or Chinese (caseworkers at community
 // organizations often work in both). Demo-grade access: one shared key
-// (CASEWORKER_KEY on the backend, VITE_CASEWORKER_KEY here).
-const DEFAULT_KEY = import.meta.env.VITE_CASEWORKER_KEY || "demo-caseworker";
+// (CASEWORKER_KEY on the backend, VITE_CASEWORKER_KEY here). The public
+// demo key is only pre-filled in the local dev build, and the server only
+// accepts it in DEMO_MODE.
+const DEFAULT_KEY = import.meta.env.VITE_CASEWORKER_KEY || (import.meta.env.DEV ? "demo-caseworker" : "");
 
 function QueueItem({ application, onApprove, onRequestInfo, language }) {
   const [note, setNote] = useState("");
-  const missing = application.documents.filter((d) => application.review_reason.includes(d.key));
+  // Nothing is pre-ticked: a document is only verified if the caseworker
+  // says they saw the original (photos aren't stored, so they can't be viewed here).
+  const [checked, setChecked] = useState(() => new Set(application.documents.filter((d) => d.verified).map((d) => d.key)));
+  const documents = application.documents.filter((d) => d.key !== "signed_application");
+  const toggle = (key) =>
+    setChecked((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
   const name = application.fields.find((f) => f.key === "full_name")?.value;
 
   return (
@@ -21,10 +33,23 @@ function QueueItem({ application, onApprove, onRequestInfo, language }) {
         <span className="badge possible">{application.covers.join(" + ")}</span>
       </div>
 
-      <h3 style={{ marginTop: 12 }}>{t(language, "cwMissingDocs")}</h3>
-      <ul>
-        {missing.map((d) => (
-          <li key={d.key}>{documentLabel(d, language)}</li>
+      <h3 style={{ marginTop: 12 }}>{t(language, "cwDocsTitle")}</h3>
+      <ul className="cw-docs">
+        {documents.map((d) => (
+          <li key={d.key}>
+            <label>
+              <input
+                type="checkbox"
+                aria-label={`${t(language, "cwVerifiedLabel")}: ${documentLabel(d, language)}`}
+                checked={checked.has(d.key)}
+                onChange={() => toggle(d.key)}
+              />
+              <span>
+                {documentLabel(d, language)}
+                <span className="review-source"> ({t(language, DOC_STATUS_KEY[d.status])})</span>
+              </span>
+            </label>
+          </li>
         ))}
       </ul>
 
@@ -54,7 +79,7 @@ function QueueItem({ application, onApprove, onRequestInfo, language }) {
         style={{ marginTop: 12 }}
       />
       <div style={{ display: "flex", gap: 12, marginTop: 12 }}>
-        <button type="button" className="big-button" onClick={() => onApprove(application.id, note)}>
+        <button type="button" className="big-button" onClick={() => onApprove(application.id, note, [...checked])}>
           {t(language, "cwApprove")}
         </button>
         <button
@@ -134,7 +159,7 @@ export default function CaseworkerQueue() {
           key={application.id}
           application={application}
           language={language}
-          onApprove={(id, note) => act(() => approveApplication(key, id, note))}
+          onApprove={(id, note, verified) => act(() => approveApplication(key, id, note, verified))}
           onRequestInfo={(id, note) => act(() => requestMoreInfo(key, id, note))}
         />
       ))}

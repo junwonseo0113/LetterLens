@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import secrets
 
 from fastapi import APIRouter, Depends, Header, HTTPException, UploadFile
@@ -8,6 +7,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlmodel import Session
 
+from app import settings
 from app.auth import current_user
 from app.db import get_session
 from app.models import AuthSession
@@ -33,6 +33,8 @@ class SubmitIn(BaseModel):
 
 class ReviewIn(BaseModel):
     note: str | None = None
+    # Approve only: documents whose originals the caseworker checked.
+    verified_documents: list[str] = []
 
 
 def _error(exc: ApplyError) -> JSONResponse:
@@ -42,8 +44,11 @@ def _error(exc: ApplyError) -> JSONResponse:
 
 
 def require_caseworker(x_caseworker_key: str = Header(default="")) -> None:
-    # Demo-grade gate: one shared key. A real deployment needs caseworker accounts.
-    expected = os.getenv("CASEWORKER_KEY", "demo-caseworker")
+    # One shared key; a real deployment needs caseworker accounts. The
+    # built-in "demo-caseworker" key only works in DEMO_MODE.
+    expected = settings.caseworker_key()
+    if expected is None:
+        raise HTTPException(status_code=503, detail="Caseworker access isn't configured (set CASEWORKER_KEY).")
     if not secrets.compare_digest(x_caseworker_key, expected):
         raise HTTPException(status_code=401, detail="Caseworker key required.")
 
@@ -60,6 +65,15 @@ def start_application(
     except ApplyError as exc:
         return _error(exc)
     return service.to_out(session, app)
+
+
+@router.get("/applications/current", response_model=ApplicationOut | None)
+def current_application(
+    program: str = "MSP", auth: AuthSession = Depends(current_user), session: Session = Depends(get_session)
+):
+    """The user's application, or null if they haven't started one."""
+    app = service.find_current(session, auth, program)
+    return service.to_out(session, app) if app else None
 
 
 @router.get("/applications/{application_id}", response_model=ApplicationOut)
@@ -143,7 +157,7 @@ def get_review_queue(session: Session = Depends(get_session)):
 )
 def approve(application_id: int, body: ReviewIn, session: Session = Depends(get_session)):
     try:
-        app = service.approve(session, application_id, body.note)
+        app = service.approve(session, application_id, body.note, body.verified_documents)
     except ApplyError as exc:
         return _error(exc)
     return service.to_out(session, app)

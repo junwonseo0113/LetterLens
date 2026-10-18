@@ -96,9 +96,13 @@ class LetterUploadResponse(BaseModel):
     reminder: ReminderOut | None = None
     bill_check: BillCheckResult | None = None
     trace: list[TraceStepOut] = []
+    # True when these values are MOCK_MODE sample data, not read from the photo.
+    is_sample: bool = False
+    created_at: datetime | None = None
 
 
 class LetterSummary(BaseModel):
     id: int
     letter_type: LetterType
     created_at: datetime
+    is_sample: bool = False

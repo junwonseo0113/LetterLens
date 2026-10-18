@@ -11,7 +11,7 @@ the core walkthrough, leaving room for Q&A.
 # Terminal 1 -- backend
 cd LetterLens
 python3 demo/seed.py          # wipes demo DB, fresh start
-MOCK_MODE=true uvicorn app.main:app --host 0.0.0.0 --port 8000
+MOCK_MODE=true DEMO_MODE=true uvicorn app.main:app --host 0.0.0.0 --port 8000
 
 # Terminal 2 -- frontend
 cd LetterLens/frontend

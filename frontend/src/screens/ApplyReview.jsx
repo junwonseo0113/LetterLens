@@ -8,15 +8,11 @@ import { useAuth } from "../context/useAuth";
 import { useLanguage } from "../context/useLanguage";
 import { t } from "../strings";
 import { addDocument, answerField, errorText, startApplication, submitApplication } from "../api";
-import { displayValue, documentLabel, label } from "../applicationFields";
+import { DOC_STATUS_KEY, displayValue, documentLabel, label } from "../applicationFields";
 
 const EDITABLE = new Set(["draft", "info_requested"]);
-const DOC_STATUS_KEY = {
-  from_letter: "docFromLetter",
-  photographed: "docPhotographed",
-  signed: "docSigned",
-  missing: "docMissing",
-};
+// Green only for checked evidence; amber = provided but nobody checked it.
+const DOC_BADGE = { verified: "likely", signed: "likely", from_letter: "possible", uploaded: "possible" };
 
 function FieldRow({ field, onSave }) {
   const { language } = useLanguage();
@@ -76,7 +72,8 @@ function FieldRow({ field, onSave }) {
 function DocumentRow({ doc, onPhoto }) {
   const { language } = useLanguage();
   const inputRef = useRef(null);
-  const ok = doc.status !== "missing";
+  // A check mark only for evidence someone confirmed -- not for a photo nobody checked.
+  const ok = doc.status === "verified" || doc.status === "signed";
   return (
     <div className="review-row">
       <span style={{ flex: 1 }}>
@@ -106,7 +103,7 @@ function DocumentRow({ doc, onPhoto }) {
           </button>
         </>
       ) : (
-        <span className={`badge ${ok ? "likely" : "missing_info"}`}>{t(language, DOC_STATUS_KEY[doc.status])}</span>
+        <span className={`badge ${DOC_BADGE[doc.status] || "missing_info"}`}>{t(language, DOC_STATUS_KEY[doc.status])}</span>
       )}
     </div>
   );
@@ -193,6 +190,11 @@ export default function ApplyReview() {
         {application.missing_documents.length > 0 && (
           <p className="review-source" style={{ margin: "8px 4px 0" }}>
             {"\u{1F9D1}\u{200D}\u{1F4BC}"} {t(language, "missingDocsNote")}
+          </p>
+        )}
+        {application.unverified_documents.length > 0 && (
+          <p className="review-source" style={{ margin: "8px 4px 0" }}>
+            {t(language, "docUnverifiedNote")}
           </p>
         )}
       </section>

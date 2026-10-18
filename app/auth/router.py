@@ -26,7 +26,7 @@ class RequestCodeIn(BaseModel):
 
 class RequestCodeOut(BaseModel):
     sent: bool
-    # Only set while no SMS provider is configured (DEMO_SHOW_OTP=true).
+    # Only set in explicit demo mode (DEMO_MODE=true); there is no SMS sender yet.
     demo_code: str | None = None
 
 

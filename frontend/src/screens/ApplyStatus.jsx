@@ -1,12 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import BigButton from "../components/BigButton";
+import ErrorBox from "../components/ErrorBox";
 import Layout from "../components/Layout";
 import { useAuth } from "../context/useAuth";
 import { useLanguage } from "../context/useLanguage";
 import { t } from "../strings";
-import { errorText, startApplication } from "../api";
-import { documentLabel } from "../applicationFields";
+import { fetchCurrentApplication } from "../api";
+import { useLoad } from "../hooks/useLoad";
+import { DOC_STATUS_KEY, documentLabel } from "../applicationFields";
 
 function Timeline({ steps }) {
   return (
@@ -28,22 +30,31 @@ export default function ApplyStatus() {
   const { language } = useLanguage();
   const { token } = useAuth();
   const navigate = useNavigate();
-  const [application, setApplication] = useState(null);
-  const [error, setError] = useState("");
+  // Only LOOK at the application -- never start one here (someone who came
+  // for SNAP mustn't end up with an MSP application).
+  const { loading, data: application, error, reload } = useLoad(() => fetchCurrentApplication(token), [token]);
 
   useEffect(() => {
-    startApplication(token)
-      .then((app) => {
-        if (app.status === "draft") return navigate("/apply", { replace: true });
-        setApplication(app);
-      })
-      .catch((err) => setError(errorText(err, language)));
-  }, [token, language, navigate]);
+    if (application?.status === "draft") navigate("/apply", { replace: true });
+  }, [application, navigate]);
+
+  if (loading || error || application?.status === "draft") {
+    return (
+      <Layout backTo="/home">
+        {loading && <p className="spinner-wrap">{t(language, "loading")}</p>}
+        {error && <ErrorBox title={t(language, "errLoadApplication")} error={error} onRetry={reload} />}
+      </Layout>
+    );
+  }
 
   if (!application) {
     return (
-      <Layout backTo="/home">
-        <p className="spinner-wrap">{error || t(language, "loading")}</p>
+      <Layout title={t(language, "statusTitle")} backTo="/home">
+        <div className="card">
+          <h2>{t(language, "noApplicationTitle")}</h2>
+          <p>{t(language, "noApplicationBody")}</p>
+        </div>
+        <BigButton to="/benefits">{t(language, "goToBenefits")}</BigButton>
       </Layout>
     );
   }
@@ -84,16 +95,25 @@ export default function ApplyStatus() {
         <div className="card status-hero">
           <div className="status-hero-icon">{"\u{1F9D1}\u{200D}\u{1F4BC}"}</div>
           <h2>{t(language, "statusNeedsReview")}</h2>
-          <p>{t(language, "needsReviewBody")}</p>
+          {/* Missing documents vs. ones provided but not yet checked in person. */}
+          <p>
+            {application.missing_documents.length > 0
+              ? t(language, "needsReviewBody")
+              : t(language, "needsReviewUnverified")}
+          </p>
           <ul style={{ listStyle: "none", paddingLeft: 0 }}>
             {application.documents
               .filter((d) => application.review_reason.includes(d.key))
               .map((d) => (
                 <li key={d.key}>
-                  {"⬜"} {documentLabel(d, language)}
+                  {"⬜"} {documentLabel(d, language)}{" "}
+                  <span className="review-source">({t(language, DOC_STATUS_KEY[d.status])})</span>
                 </li>
               ))}
           </ul>
+          {application.unverified_documents.length > 0 && (
+            <p className="review-source">{t(language, "docUnverifiedNote")}</p>
+          )}
         </div>
       )}
 

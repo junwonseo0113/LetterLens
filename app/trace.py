@@ -71,6 +71,16 @@ def call_with_fallback(real: Callable[[], T], mock: Callable[[], T]) -> T:
         return mock()
 
 
+def call_real_or_sample(real: Callable[[], T], sample: Callable[[], T]) -> T:
+    """For reading a letter's facts. MOCK_MODE=true: canned sample answer.
+    Otherwise real only -- a failure raises instead of quietly substituting
+    sample values that would then be saved into someone's profile."""
+    if is_mock_mode():
+        mark_fallback_used()
+        return sample()
+    return real()
+
+
 @dataclass
 class TraceStep:
     name: str

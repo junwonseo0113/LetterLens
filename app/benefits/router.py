@@ -1,13 +1,15 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Query
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 from sqlmodel import Session
 
 from app.auth import current_user
 from app.db import get_session
 from app.models import AuthSession, ProfileRecord
 
-from .service import BenefitsResult, get_benefits
+from .service import AnswerError, BenefitsResult, get_benefits, save_answer
 
 router = APIRouter()
 
@@ -19,6 +21,25 @@ def list_benefits(
     session: Session = Depends(get_session),
 ) -> BenefitsResult:
     return get_benefits(session, auth.user_id, language)
+
+
+class AnswerIn(BaseModel):
+    key: str
+    value: str
+
+
+@router.post("/profile/answers")
+def answer_question(
+    body: AnswerIn, auth: AuthSession = Depends(current_user), session: Session = Depends(get_session)
+):
+    """Answer one fact the benefits check is missing (see BenefitsResult.questions)."""
+    try:
+        value = save_answer(session, auth.user_id, body.key, body.value)
+    except AnswerError as exc:
+        return JSONResponse(
+            status_code=exc.status_code, content={"detail": exc.message_en, "detail_zh": exc.message_zh}
+        )
+    return {"key": body.key, "value": value}
 
 
 @router.get("/profile/on-qmb")

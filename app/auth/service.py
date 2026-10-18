@@ -2,21 +2,22 @@
 
 The point is trust: a user proves they hold the phone number before the
 app will build or submit an application in their name. There is no SMS
-provider wired up, so with DEMO_SHOW_OTP=true (the default) the code is
-returned in the API response and shown on screen. Set DEMO_SHOW_OTP=false
-once a real SMS sender is plugged in at send_code().
+provider wired up, so the code is returned in the API response and shown
+on screen -- but only in explicit demo mode (DEMO_MODE=true, see
+app/settings.py). Outside demo mode, asking for a code fails clearly until
+a real SMS sender is plugged in at send_code().
 """
 
 from __future__ import annotations
 
 import hashlib
-import os
 import re
 import secrets
 from datetime import datetime, timedelta, timezone
 
 from sqlmodel import Session, select
 
+from app import settings
 from app.models import AuthSession, OtpChallenge
 
 CODE_TTL = timedelta(minutes=10)
@@ -37,7 +38,7 @@ class AuthError(Exception):
 
 
 def show_code_in_response() -> bool:
-    return os.getenv("DEMO_SHOW_OTP", "true").lower() not in ("0", "false", "no")
+    return settings.demo_mode()
 
 
 def normalize_phone(raw: str) -> str:
@@ -66,6 +67,12 @@ def _aware(dt: datetime) -> datetime:
 def send_code(session: Session, raw_phone: str) -> tuple[str, str]:
     """Create a fresh code for this phone. Returns (phone, code)."""
     phone = normalize_phone(raw_phone)
+    if not settings.demo_mode() and not settings.sms_sender_configured():
+        raise AuthError(
+            "Sign-in by text message isn't set up on this server yet.",
+            "此服务器尚未设置短信登录。",
+            status_code=503,
+        )
     # expires_at - CODE_TTL is when each code was issued.
     recent = session.exec(
         select(OtpChallenge).where(

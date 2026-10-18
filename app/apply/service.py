@@ -53,6 +53,10 @@ class DocumentOut(BaseModel):
     key: str
     label_en: str
     label_zh: str
+    # "verified": a caseworker saw the original. "from_letter": read from an
+    # uploaded letter. "uploaded": a photo was taken, but photos are
+    # discarded (privacy rule), so nobody has checked it. "signed" / "missing".
+    verified: bool = False
     # "from_letter" | "photographed" | "signed" | "missing"
     status: str
 
@@ -66,6 +70,8 @@ class ApplicationOut(BaseModel):
     next_question: str | None
     documents: list[DocumentOut]
     missing_documents: list[str]
+    # Provided but not checked by a caseworker yet (uploaded or from a letter).
+    unverified_documents: list[str] = []
     signed: bool
     submitted_at: datetime | None
     confirmation_number: str | None
@@ -93,6 +99,8 @@ def _latest_letter(session: Session, user_id: str, letter_type: str) -> LetterRe
 def _format_prefill(kind: str, value) -> str | None:
     if value is None or value == "":
         return None
+    if isinstance(value, bool):
+        value = "yes" if value else "no"
     try:
         return normalize(kind, str(value))
     except ValueError:
@@ -119,8 +127,11 @@ def _prefill_value(session: Session, app: ApplicationRecord, phone: str, spec) -
         if profile is None:
             return None, None
         field_name = spec.prefill[1]
-        letter_id = (profile.field_sources or {}).get(field_name)
-        letter = session.get(LetterRecord, letter_id) if letter_id else None
+        source = (profile.field_sources or {}).get(field_name)
+        if source in ("user", "application"):
+            # The user already told us (e.g. on the Benefits page).
+            return _format_prefill(spec.kind, getattr(profile, field_name)), "you"
+        letter = session.get(LetterRecord, source) if isinstance(source, int) else None
         if letter is None:
             return None, None  # only pre-fill documented numbers, never defaults
         return _format_prefill(spec.kind, getattr(profile, field_name)), letter.letter_type
@@ -155,14 +166,22 @@ def _documents(session: Session, app: ApplicationRecord) -> list[DocumentOut]:
     for item in MSP_DOCUMENTS:
         if item["key"] == "signed_application":
             status = "signed" if app.signature_png else "missing"
+        elif item["key"] in (app.documents_verified or []):
+            status = "verified"
         elif item["satisfied_by"] & letter_types:
             status = "from_letter"
         elif item["key"] in (app.documents_provided or []):
-            status = "photographed"
+            status = "uploaded"
         else:
             status = "missing"
         out.append(
-            DocumentOut(key=item["key"], label_en=item["label_en"], label_zh=item["label_zh"], status=status)
+            DocumentOut(
+                key=item["key"],
+                label_en=item["label_en"],
+                label_zh=item["label_zh"],
+                status=status,
+                verified=status == "verified",
+            )
         )
     return out
 
@@ -197,6 +216,7 @@ def to_out(session: Session, app: ApplicationRecord) -> ApplicationOut:
         documents=documents,
         # The signature comes with the submit itself, so it's never "missing" there.
         missing_documents=[d.key for d in documents if d.status == "missing" and d.key != "signed_application"],
+        unverified_documents=[d.key for d in documents if d.status in ("uploaded", "from_letter")],
         signed=bool(app.signature_png),
         submitted_at=app.submitted_at,
         confirmation_number=app.confirmation_number,
@@ -232,6 +252,13 @@ def get_or_start(session: Session, auth: AuthSession, program: str) -> Applicati
     return app
 
 
+def find_current(session: Session, auth: AuthSession, program: str) -> ApplicationRecord | None:
+    """The user's application for this program, if they started one. Never
+    creates one -- just looking at "my application" mustn't start an MSP
+    application for someone who only came for SNAP."""
+    return _find(session, auth.user_id, program)
+
+
 def get_owned(session: Session, auth: AuthSession, application_id: int) -> ApplicationRecord:
     app = session.get(ApplicationRecord, application_id)
     if app is None or app.user_id != auth.user_id:
@@ -265,22 +292,28 @@ def _age_on(born: date, today: date) -> int:
 # What each application answer means for the eligibility profile. The
 # rules engine reads ProfileRecord, so answers given here change the
 # benefits results the next time they're checked.
+# application field -> (profile field it answers, how to store the value)
 _PROFILE_UPDATES = {
-    "date_of_birth": lambda p, v: setattr(p, "age", _age_on(date.fromisoformat(v), date.today())),
+    "date_of_birth": ("age", lambda p, v: setattr(p, "age", _age_on(date.fromisoformat(v), date.today()))),
     # The question asks "married AND living with your spouse".
-    "married": lambda p, v: (setattr(p, "married", v == "yes"), setattr(p, "living_with_spouse", v == "yes")),
-    "household_size": lambda p, v: setattr(p, "household_size", max(1, int(float(v)))),
-    "monthly_social_security": lambda p, v: setattr(p, "ss_gross_monthly", float(v)),
-    "monthly_work_income": lambda p, v: setattr(p, "earned_income_monthly", float(v)),
+    "married": (
+        "married",
+        lambda p, v: (setattr(p, "married", v == "yes"), setattr(p, "living_with_spouse", v == "yes")),
+    ),
+    "household_size": ("household_size", lambda p, v: setattr(p, "household_size", int(v))),
+    "monthly_social_security": ("ss_gross_monthly", lambda p, v: setattr(p, "ss_gross_monthly", float(v))),
+    "monthly_work_income": ("earned_income_monthly", lambda p, v: setattr(p, "earned_income_monthly", float(v))),
 }
 
 
 def _update_profile(session: Session, user_id: str, key: str, value: str) -> None:
-    update = _PROFILE_UPDATES.get(key)
-    if update is None:
+    if key not in _PROFILE_UPDATES:
         return
+    profile_field, update = _PROFILE_UPDATES[key]
     profile = session.get(ProfileRecord, user_id) or ProfileRecord(user_id=user_id)
     update(profile, value)
+    # Mark it known, so the rules engine stops treating it as missing.
+    profile.set_provenance(profile_field, "application")
     session.add(profile)
 
 
@@ -337,11 +370,12 @@ def submit(session: Session, app: ApplicationRecord, signature_png: str, confirm
     app.signed_at = _utcnow()
     app.reviewer_note = None
 
-    missing = out.missing_documents
-    if missing:
-        # Not enough documents to send on its own -- a person checks first.
+    # Only send directly when every document is verified. A photo alone
+    # can't be: it's discarded after upload, so a caseworker checks originals.
+    needs_checking = out.missing_documents + out.unverified_documents
+    if needs_checking:
         app.status = "needs_review"
-        app.review_reason = missing
+        app.review_reason = needs_checking
     else:
         app.status = "submitted"
         app.review_reason = []
@@ -373,8 +407,16 @@ def _require_in_review(session: Session, application_id: int) -> ApplicationReco
     return app
 
 
-def approve(session: Session, application_id: int, note: str | None) -> ApplicationRecord:
+def approve(
+    session: Session, application_id: int, note: str | None, verified: list[str] | None = None
+) -> ApplicationRecord:
+    """The caseworker approves and lists the documents they saw the original of."""
     app = _require_in_review(session, application_id)
+    known = {item["key"] for item in MSP_DOCUMENTS} - {"signed_application"}
+    unknown = set(verified or []) - known
+    if unknown:
+        raise ApplyError(f"Unknown documents: {', '.join(sorted(unknown))}.")
+    app.documents_verified = sorted(set(app.documents_verified or []) | set(verified or []))
     app.status = "submitted"
     app.reviewer_note = note or None
     app.submitted_at = _utcnow()

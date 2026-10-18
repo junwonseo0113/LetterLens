@@ -3,6 +3,17 @@ import { UI_STRINGS, t } from "./strings";
 
 const MONEY_FIELDS = new Set(["monthly_social_security", "monthly_work_income"]);
 
+// Application document status -> label. "uploaded" is only a photo (photos
+// are discarded for privacy, so nobody can check it later); "verified"
+// means a caseworker saw the original.
+export const DOC_STATUS_KEY = {
+  verified: "docVerified",
+  signed: "docSigned",
+  from_letter: "docFromLetter",
+  uploaded: "docPhotographed",
+  missing: "docMissing",
+};
+
 // Field/document wording lives in strings.js for every language; the
 // backend's English/Chinese labels are the fallback for unknown keys.
 function lookup(language, key, fallback) {

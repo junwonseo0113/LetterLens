@@ -4,10 +4,11 @@ import pytest
 from fastapi.testclient import TestClient
 
 from tests.conftest import auth_headers
-from sqlmodel import SQLModel
+from sqlmodel import Session, SQLModel
 
 from app.db import engine
 from app.main import app
+from app.models import ProfileRecord
 
 client = TestClient(app)
 
@@ -58,36 +59,56 @@ def test_upload_trace_shows_ocr_and_genai_steps_in_order():
     assert all(s["offline"] is True for s in trace)
 
 
-def test_real_ocr_failure_falls_back_to_mock_and_flags_offline():
-    # MOCK_MODE=false here is a *genuine* "OCI unreachable" condition in
-    # this environment -- the oci package isn't installed, so _real_ocr
-    # raises ModuleNotFoundError on `import oci`, not a simulated failure.
-    import os
+def test_real_read_failure_saves_nothing_and_offers_retry(monkeypatch):
+    # Outside MOCK_MODE a failed OCR must NOT fall back to the canned
+    # sample letter (whose $1,700 would be saved into a real profile).
+    from app.docs import oci_client
 
-    previous = os.environ.get("MOCK_MODE")
-    os.environ["MOCK_MODE"] = "false"
-    try:
-        response = _upload("ssa_sample.jpg")
-    finally:
-        if previous is None:
-            del os.environ["MOCK_MODE"]
-        else:
-            os.environ["MOCK_MODE"] = previous
+    def ocr_down(image_bytes):
+        raise RuntimeError("OCI Document Understanding unreachable")
 
-    assert response.status_code == 200
+    monkeypatch.setenv("MOCK_MODE", "false")
+    monkeypatch.setattr(oci_client, "_real_ocr", ocr_down)
+    response = _upload("ssa_sample.jpg")
+
+    assert response.status_code == 502
     body = response.json()
-    trace = body["trace"]
+    assert body["retryable"] is True
+    assert "Nothing was saved" in body["detail"]
+    assert body["detail_zh"]
 
-    # Still produces a correct, fully-formed response via the fallback --
-    # the user never sees a crash, just degraded (offline) data.
+    monkeypatch.setenv("MOCK_MODE", "true")
+    assert client.get("/letters", headers=auth_headers("demo")).json() == []
+    with Session(engine) as session:
+        profile = session.get(ProfileRecord, "demo")
+        assert profile is None or profile.ss_gross_monthly is None
+
+
+def test_real_letter_is_not_sample_and_explanation_may_use_template(monkeypatch):
+    from app.docs import oci_client
+
+    monkeypatch.setenv("MOCK_MODE", "false")
+    monkeypatch.setattr(oci_client, "_real_ocr", lambda b: oci_client._mock_ocr("ssa.jpg"))
+    monkeypatch.setattr(oci_client, "_real_classify", oci_client._mock_classify)
+    monkeypatch.setattr(oci_client, "_real_extract", lambda t, text, kv, retry: oci_client._mock_extract(t, text))
+
+    def explain_down(*args):
+        raise RuntimeError("GenAI down")
+
+    monkeypatch.setattr(oci_client, "_real_explain", explain_down)
+    body = _upload("photo.jpg").json()
+
+    assert body["is_sample"] is False
     assert body["extracted_fields"]["gross_monthly_benefit"] == 1700.0
+    steps = {s["name"]: s for s in body["trace"]}
+    assert steps["Read the letter"]["offline"] is False
+    assert steps["Explained it in your language"]["offline"] is True  # template from the real fields
 
-    assert all(s["offline"] is True for s in trace)
-    assert all("(offline fallback)" in s["service"] for s in trace)
-    # Distinct from the "(mock)" label used when MOCK_MODE=true is the
-    # intended mode, not a degradation.
-    assert all("(mock)" not in s["service"] for s in trace)
 
+def test_mock_mode_letters_are_labeled_sample():
+    body = _upload("ssa_sample.jpg").json()
+    assert body["is_sample"] is True
+    assert client.get("/letters", headers=auth_headers("demo")).json()[0]["is_sample"] is True
 
 def test_bank_statement_sets_savings():
     response = _upload("bank_sample.jpg")
@@ -160,3 +181,35 @@ def test_list_letters_scoped_to_user():
 
     assert len(body) == 1
     assert body[0]["letter_type"] == "ssa_benefit_letter"
+
+
+# --- reopening saved letters ------------------------------------------------
+
+
+def test_owner_can_reopen_a_letter_with_everything_shown_at_upload():
+    uploaded = _upload("hra_sample.jpg", user_id="alice").json()
+    reopened = client.get(f"/letters/{uploaded['letter_id']}", headers=auth_headers("alice")).json()
+
+    assert reopened["letter_type"] == "hra_renewal_notice"
+    assert reopened["explanation"] == uploaded["explanation"]
+    assert reopened["action_items"] == uploaded["action_items"]
+    assert reopened["deadline"] == "2026-11-15"
+    assert reopened["reminder"]["deadline"] == "2026-11-15"
+    assert reopened["extracted_fields"]["required_documents"] == ["proof of income", "proof of residence", "ID"]
+    assert reopened["is_sample"] is True
+
+
+def test_reopening_in_another_language_rebuilds_the_text():
+    uploaded = _upload("hra_sample.jpg", language="en", user_id="alice").json()
+    zh = client.get(
+        f"/letters/{uploaded['letter_id']}", params={"language": "zh"}, headers=auth_headers("alice")
+    ).json()
+    assert "续期" in zh["explanation"]
+    assert zh["action_items"] == ["请在 2026-11-15 之前提交：收入证明、居住证明、身份证明"]
+
+
+def test_users_cannot_open_each_others_letters():
+    letter_id = _upload("ssa_sample.jpg", user_id="alice").json()["letter_id"]
+    assert client.get(f"/letters/{letter_id}", headers=auth_headers("bob")).status_code == 404
+    assert client.get(f"/letters/{letter_id}").status_code == 401
+    assert client.get("/letters/99999", headers=auth_headers("alice")).status_code == 404

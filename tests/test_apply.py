@@ -210,7 +210,14 @@ def test_answers_update_the_eligibility_profile():
         assert profile.earned_income_monthly == 0
         assert profile.ss_gross_monthly == 1700  # from the letter, untouched
 
-    # And the benefits check now sees her age (SNAP elderly rules apply).
+    # A household of 2 that isn't a couple: the other person's income is
+    # now a missing fact, asked rather than assumed to be $0.
+    snap = next(
+        r for r in client.get("/benefits", headers=headers).json()["results"] if r["program"] == "SNAP"
+    )
+    assert snap["missing_fields"] == ["other_household_income_monthly"]
+    client.post("/profile/answers", json={"key": "other_household_income_monthly", "value": "0"}, headers=headers)
+
     snap = next(
         r for r in client.get("/benefits", headers=headers).json()["results"] if r["program"] == "SNAP"
     )
@@ -288,16 +295,27 @@ def test_missing_documents_route_to_caseworker_who_can_approve():
         f"/applications/{app_id}/submit", json={"signature_png": SIGNATURE, "confirmed": True}, headers=headers
     ).json()
     assert body["status"] == "needs_review"
-    assert set(body["review_reason"]) == set(OTHER_DOCS)  # income came from the SSA letter
+    assert set(body["missing_documents"]) == set(OTHER_DOCS)
+    # Income was read from the SSA letter -- evidence, but nobody has checked it.
+    assert body["unverified_documents"] == ["proof_of_income"]
+    assert set(body["review_reason"]) == set(OTHER_DOCS) | {"proof_of_income"}
     assert body["confirmation_number"] is None
 
     assert client.get("/review-queue").status_code == 401
     queue = client.get("/review-queue", headers=CASEWORKER).json()
     assert [a["id"] for a in queue] == [app_id]
 
-    approved = client.post(f"/review-queue/{app_id}/approve", json={"note": "Saw documents in person"}, headers=CASEWORKER).json()
+    approved = client.post(
+        f"/review-queue/{app_id}/approve",
+        json={"note": "Saw documents in person", "verified_documents": ["proof_of_income", "medicare_card"]},
+        headers=CASEWORKER,
+    ).json()
     assert approved["status"] == "submitted"
     assert approved["confirmation_number"].startswith("MSP-")
+    statuses = {d["key"]: d["status"] for d in approved["documents"]}
+    assert statuses["proof_of_income"] == "verified"
+    assert statuses["medicare_card"] == "verified"
+    assert statuses["social_security_card"] == "missing"  # only what the caseworker saw
     assert client.get("/review-queue", headers=CASEWORKER).json() == []
 
 
@@ -324,9 +342,27 @@ def test_caseworker_request_info_lets_user_fix_and_resubmit():
         assert response.status_code == 200
 
     resubmitted = client.post(f"/applications/{app_id}/submit", json=submit, headers=headers).json()
-    assert resubmitted["status"] == "submitted"
+    # Photos are "uploaded", not verified: they're discarded, so a
+    # caseworker still has to see the originals.
+    assert resubmitted["status"] == "needs_review"
     assert resubmitted["simulated"] is True
     assert resubmitted["missing_documents"] == []
+    assert set(resubmitted["unverified_documents"]) == set(OTHER_DOCS) | {"proof_of_income"}
+    statuses = {d["key"]: d["status"] for d in resubmitted["documents"]}
+    assert statuses["medicare_card"] == "uploaded"
+    assert statuses["proof_of_income"] == "from_letter"
+
+
+def test_caseworker_cannot_verify_unknown_documents():
+    headers, _ = _sign_in()
+    _upload("ssa_benefit_letter_sample.jpg", headers)
+    app_id = client.post("/applications", json={"program": "MSP"}, headers=headers).json()["id"]
+    _answer_remaining(headers, app_id)
+    client.post(f"/applications/{app_id}/submit", json={"signature_png": SIGNATURE, "confirmed": True}, headers=headers)
+    response = client.post(
+        f"/review-queue/{app_id}/approve", json={"verified_documents": ["passport"]}, headers=CASEWORKER
+    )
+    assert response.status_code == 422
 
 
 def test_submitted_application_is_locked():
@@ -343,7 +379,16 @@ def test_submitted_application_is_locked():
     body = client.post(
         f"/applications/{app_id}/submit", json={"signature_png": SIGNATURE, "confirmed": True}, headers=headers
     ).json()
+    assert body["status"] == "needs_review"
+    response = client.put(f"/applications/{app_id}/fields/full_name", json={"value": "x"}, headers=headers)
+    assert response.status_code == 409  # locked while a caseworker reviews
+
+    verified = OTHER_DOCS + ["proof_of_income"]
+    body = client.post(
+        f"/review-queue/{app_id}/approve", json={"verified_documents": verified}, headers=CASEWORKER
+    ).json()
     assert body["status"] == "submitted"
+    assert body["unverified_documents"] == []
 
     response = client.put(f"/applications/{app_id}/fields/full_name", json={"value": "x"}, headers=headers)
     assert response.status_code == 409
@@ -359,8 +404,15 @@ def test_chinese_letter_explanation_keeps_exact_numbers():
     assert "MOCK_MODE" not in body["explanation"]
 
 
+def _answer_basics(headers: dict) -> None:
+    """Answer the facts no sample letter contains: single, no work income, lives alone."""
+    for key, value in [("earned_income_monthly", "0"), ("married", "no"), ("household_size", "1")]:
+        assert client.post("/profile/answers", json={"key": key, "value": value}, headers=headers).status_code == 200
+
+
 def test_chinese_benefits_explanations():
     _upload("ssa_benefit_letter_sample.jpg", auth_headers("chen"))
+    _answer_basics(auth_headers("chen"))
     results = client.get("/benefits", params={"language": "zh"}, headers=auth_headers("chen")).json()["results"]
     assert results
     assert all("MOCK_MODE" not in r["explanation"] for r in results)
@@ -393,6 +445,7 @@ def test_every_rule_has_matching_chinese_with_the_same_numbers():
 def test_benefits_in_chinese_are_fully_chinese_with_english_rule_kept():
     _upload("ssa_benefit_letter_sample.jpg", auth_headers("chen"))
     _upload("bank_statement_sample.jpg", auth_headers("chen"))
+    _answer_basics(auth_headers("chen"))
     results = client.get("/benefits", params={"language": "zh"}, headers=auth_headers("chen")).json()["results"]
     qmb = next(r for r in results if r["program"] == "QMB")
     assert "可计算收入" in qmb["rule_applied"]
@@ -405,3 +458,35 @@ def test_chinese_letter_action_items():
     body = _upload("hra_snap_renewal_notice_sample.jpg", auth_headers("chen")).json()
     assert body["action_items"] == ["请在 2026-11-15 之前提交：收入证明、居住证明、身份证明"]
     assert "收入证明、居住证明、身份证明" in body["explanation"]
+
+
+def test_viewing_my_application_does_not_start_one():
+    headers, _ = _sign_in()
+    assert client.get("/applications/current", headers=headers).json() is None
+    assert client.get("/applications/current", headers=headers).json() is None  # still nothing created
+    app_id = client.post("/applications", json={"program": "MSP"}, headers=headers).json()["id"]
+    assert client.get("/applications/current", headers=headers).json()["id"] == app_id
+    assert client.get("/applications/current").status_code == 401
+
+
+def test_answers_given_on_benefits_page_prefill_the_application():
+    headers, _ = _sign_in()
+    _upload("ssa_benefit_letter_sample.jpg", headers)
+    for key, value in [("married", "no"), ("household_size", "1"), ("earned_income_monthly", "0")]:
+        client.post("/profile/answers", json={"key": key, "value": value}, headers=headers)
+    body = client.post("/applications", json={"program": "MSP"}, headers=headers).json()
+    fields = {f["key"]: f for f in body["fields"]}
+    assert fields["married"]["value"] == "no" and fields["married"]["source"] == "you"
+    assert fields["household_size"]["value"] == "1"
+    assert fields["monthly_work_income"]["value"] == "0"
+    # Never answered anywhere: still asked, not defaulted.
+    assert fields["date_of_birth"]["value"] is None
+
+
+def test_profile_defaults_never_prefill_the_application():
+    headers, _ = _sign_in()
+    _upload("ssa_benefit_letter_sample.jpg", headers)
+    body = client.post("/applications", json={"program": "MSP"}, headers=headers).json()
+    fields = {f["key"]: f for f in body["fields"]}
+    assert fields["married"]["value"] is None  # default False is not an answer
+    assert fields["household_size"]["value"] is None  # default 1 is not an answer

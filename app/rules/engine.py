@@ -71,6 +71,31 @@ class Profile:
     # "likely eligible for QMB", used by the PROTECT illegal-billing check.
     on_qmb: bool = False
 
+    # Income of other people in the household (not self/spouse). SNAP only.
+    other_household_income_monthly: float = 0.0
+
+    # Field names nobody has told us yet. The values above are only trusted
+    # for fields NOT in this set: an unknown income is not $0 and unknown
+    # Medicare enrollment is not "not enrolled". A program that needs an
+    # unknown fact comes back MISSING_INFO listing it in missing_fields.
+    # Empty by default, so a hand-built Profile means exactly what it says.
+    unknown: frozenset[str] = frozenset()
+
+
+# What each fact is called when we tell the user it's missing.
+MISSING_FACT_LABELS = {
+    "has_medicare": ("whether you have Medicare", "您是否有医疗保险 (Medicare)"),
+    "ss_gross_monthly": ("your monthly Social Security", "您每月的社会安全福利"),
+    "earned_income_monthly": ("your monthly income from work", "您每月的工作收入"),
+    "married": ("whether you're married and live with your spouse", "您是否已婚并与配偶同住"),
+    "ss_gross_monthly_spouse": ("your spouse's monthly Social Security", "配偶每月的社会安全福利"),
+    "earned_income_monthly_spouse": ("your spouse's monthly income from work", "配偶每月的工作收入"),
+    "household_size": ("how many people live in your home", "家里住几个人"),
+    "other_household_income_monthly": ("other household members' monthly income", "家中其他人每月的收入"),
+    "age": ("your age", "您的年龄"),
+    "savings": ("your savings", "您的存款"),
+}
+
 
 @dataclass
 class ProgramResult:
@@ -102,6 +127,29 @@ def _counts_as_couple(profile: Profile) -> bool:
     return profile.married and profile.living_with_spouse
 
 
+def _unknown(profile: Profile, fields: list[str]) -> list[str]:
+    return [f for f in fields if f in profile.unknown]
+
+
+def _income_facts(profile: Profile) -> list[str]:
+    """Facts needed to total this person's (and a live-in spouse's) income."""
+    facts = ["ss_gross_monthly", "earned_income_monthly", "married"]
+    if "married" not in profile.unknown and _counts_as_couple(profile):
+        facts += ["ss_gross_monthly_spouse", "earned_income_monthly_spouse"]
+    return facts
+
+
+def _missing_info(program: str, missing: list[str], confidence: Confidence = Confidence.DOCUMENTED) -> ProgramResult:
+    return ProgramResult(
+        program=program,
+        status=Status.MISSING_INFO,
+        rule_applied="Need to know: " + ", ".join(MISSING_FACT_LABELS[f][0] for f in missing),
+        rule_applied_zh="还需要知道：" + "、".join(MISSING_FACT_LABELS[f][1] for f in missing),
+        missing_fields=list(missing),
+        confidence=confidence,
+    )
+
+
 def _gross_ss_income(profile: Profile) -> tuple[float, float, Confidence]:
     confidence = Confidence.DOCUMENTED
     ss_self = profile.ss_gross_monthly
@@ -116,6 +164,8 @@ def _gross_ss_income(profile: Profile) -> tuple[float, float, Confidence]:
 def _evaluate_msp(
     profile: Profile, countable: float, income_confidence: Confidence
 ) -> ProgramResult:
+    if "has_medicare" in profile.unknown:
+        return _missing_info("MSP", ["has_medicare"] + _unknown(profile, _income_facts(profile)))
     if not profile.has_medicare:
         return ProgramResult(
             program="MSP",
@@ -124,6 +174,10 @@ def _evaluate_msp(
             rule_applied_zh="医疗保险储蓄计划 (Medicare Savings Program) 要求已加入医疗保险 (Medicare)",
             missing_fields=["has_medicare"],
         )
+
+    missing = _unknown(profile, _income_facts(profile))
+    if missing:
+        return _missing_info("MSP", missing, income_confidence)
 
     is_couple = _counts_as_couple(profile)
     qmb_limit = (
@@ -215,6 +269,8 @@ def _evaluate_extra_help(
             rule_applied_zh="因已加入 Medicaid/SSI 而自动获得",
         )
 
+    if "has_medicare" in profile.unknown:
+        return _missing_info("Extra Help", ["has_medicare"])
     if not profile.has_medicare:
         return ProgramResult(
             program="Extra Help",
@@ -235,6 +291,11 @@ def _evaluate_extra_help(
             warnings=list(msp.warnings),
             warnings_zh=list(msp.warnings_zh),
         )
+
+    if msp.status == Status.MISSING_INFO:
+        return _missing_info("Extra Help", msp.missing_fields, msp.confidence)
+    if "savings" in profile.unknown:
+        return _missing_info("Extra Help", ["savings"], income_confidence)
 
     is_couple = _counts_as_couple(profile)
     income_limit = (
@@ -287,6 +348,14 @@ def _evaluate_extra_help(
 def _evaluate_snap(
     profile: Profile, gross_self: float, gross_spouse: float, countable: float, income_confidence: Confidence
 ) -> ProgramResult:
+    facts = _income_facts(profile) + ["household_size"]
+    couple_size = 2 if "married" not in profile.unknown and _counts_as_couple(profile) else 1
+    if "household_size" not in profile.unknown and profile.household_size > couple_size:
+        facts.append("other_household_income_monthly")
+    missing = _unknown(profile, facts)
+    if missing:
+        return _missing_info("SNAP", missing, income_confidence)
+
     household_size = max(profile.household_size, 2 if _counts_as_couple(profile) else 1)
     fpl_annual = limits.FPL_100_SINGLE_ANNUAL.value + limits.FPL_INCREMENT_PER_ADDITIONAL_PERSON.value * (
         household_size - 1
@@ -297,6 +366,7 @@ def _evaluate_snap(
     household_gross_monthly = gross_self + gross_spouse + (
         (profile.earned_income_monthly or 0.0)
         + ((profile.earned_income_monthly_spouse or 0.0) if _counts_as_couple(profile) else 0.0)
+        + (profile.other_household_income_monthly or 0.0)
     )
 
     # Federal law (7 CFR 273.9; confirmed 2026-10-17 against fns.usda.gov and
@@ -315,6 +385,9 @@ def _evaluate_snap(
         "savings": profile.savings,
         "asset_limit": limits.SNAP_ASSET_LIMIT.value,
     }
+    if "savings" in profile.unknown:
+        # Not needed for this decision and nobody told us -- don't show a fake $0.
+        del numbers_used["savings"]
 
     if household_gross_monthly <= fpl_200_monthly:
         status = Status.LIKELY
@@ -326,6 +399,9 @@ def _evaluate_snap(
             f"家庭总收入每月 ${household_gross_monthly:,.2f} <= 贫困线200% 每月 "
             f"${fpl_200_monthly:,.2f}；具体福利金额由 HRA 决定"
         )
+    elif "age" in profile.unknown and not profile.disability and countable <= fpl_100_monthly:
+        # Over 200% FPL: whether the elderly exemption applies depends on age.
+        return _missing_info("SNAP", ["age"], income_confidence)
     elif household_has_elderly_or_disabled and countable <= fpl_100_monthly:
         status = Status.LIKELY
         rule = (
@@ -340,6 +416,8 @@ def _evaluate_snap(
             f"净收入每月 ${countable:,.2f} <= 贫困线100% 每月 ${fpl_100_monthly:,.2f} 就足够，"
             "也不审查资产"
         )
+    elif countable <= fpl_100_monthly and "savings" in profile.unknown:
+        return _missing_info("SNAP", ["savings"], income_confidence)
     elif countable <= fpl_100_monthly and profile.savings <= limits.SNAP_ASSET_LIMIT.value:
         status = Status.POSSIBLE
         rule = (

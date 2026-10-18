@@ -39,9 +39,23 @@ Demo persona: Chen Yu-lan (陈玉兰), 74, Flushing, Queens, Mandarin speaker.
   token, never from a `user_id` parameter. Sessions last 30 days and are
   revoked on sign-out; code requests are limited to 5 per phone per 15
   minutes. With no SMS provider configured, the code is shown on screen
-  (`DEMO_SHOW_OTP=true`), so **anyone can sign in as any number in demo
+  (`DEMO_MODE=true`), so **anyone can sign in as any number in demo
   mode** -- turn that off once a real SMS sender is wired into
   `app/auth/service.py` `send_code()`.
+- **Unknown is not zero.** A fact nobody has given us (income, Medicare,
+  marriage, household size, age, savings) is never treated as $0 or "no".
+  The program comes back "More information needed", the app asks exactly
+  those questions (`/benefits` -> `questions`, answered via
+  `POST /profile/answers`), and every answer is validated by type.
+- **Real uploads never become sample data.** Outside `MOCK_MODE`, if
+  reading a letter fails the upload fails with a retryable error and
+  nothing is saved. `MOCK_MODE` letters are stored with `is_sample` and
+  labeled "Sample" everywhere they appear.
+- **Uploaded is not verified.** A document photo only counts as
+  "uploaded" -- photos are discarded, so nobody can check them later. An
+  application only goes out directly when every document was verified by
+  a caseworker who saw the original; otherwise it goes to the caseworker
+  queue, where they tick what they checked.
 - **English and Chinese everywhere.** Every message the user sees has an
   English and a Chinese version, including the backend's rules,
   warnings, to-do items and bill-check reasons (written side by side in
@@ -222,7 +236,7 @@ main.tf, modules/, schema.yaml, *.tf
 python3 -m venv .venv && source .venv/bin/activate   # optional
 pip install -r requirements.txt
 cp .env.example .env     # defaults already run fully offline
-uvicorn app.main:app --reload --port 8000
+DEMO_MODE=true uvicorn app.main:app --reload --port 8000
 ```
 
 ### Frontend
@@ -255,15 +269,15 @@ Root `.env` (backend, see `.env.example`):
 | `OCI_COMPARTMENT_ID` | _(empty)_ | Required when `MOCK_MODE=false` |
 | `OCI_GENAI_MODEL_ID` | _(empty)_ | Required when `MOCK_MODE=false` |
 | `OCI_REGION` | `us-chicago-1` | Overrides the config file's region (GenAI is only in a few regions) |
-| `DEMO_SHOW_OTP` | `true` | Return the sign-in code in the API response (no SMS provider yet) |
-| `CASEWORKER_KEY` | `demo-caseworker` | Shared key for the `/review-queue` endpoints |
+| `DEMO_MODE` | _(off)_ | **Set `true` for demos.** Shows the sign-in code on screen (no SMS sender exists yet) and accepts the caseworker key `demo-caseworker`. Off = the server refuses to start until production settings exist. |
+| `CASEWORKER_KEY` | _(none)_ | Shared key for `/review-queue`. Required outside demo mode; must not be `demo-caseworker`. |
 
 Frontend `frontend/.env.local` (see `frontend/.env.example`):
 
 | Var | Default | Purpose |
 |---|---|---|
 | `VITE_API_BASE_URL` | `/api` (proxied to `127.0.0.1:8000`) | Only set to call a backend somewhere else |
-| `VITE_CASEWORKER_KEY` | `demo-caseworker` | Pre-fills the key on the `/caseworker` screen |
+| `VITE_CASEWORKER_KEY` | _(dev build: `demo-caseworker`)_ | Pre-fills the key on the `/caseworker` screen |
 
 Never commit `.env` or `.env.local` — both are gitignored.
 
@@ -287,7 +301,7 @@ cd frontend && npm run build && npm run lint
    Document Understanding OCR, classify, extract, and Chinese explanations.
    Each failure prints the Oracle error plus a hint.
 5. Run the app with the same settings:
-   `.venv/bin/uvicorn app.main:app --env-file .env --port 8000` (plain
+   `DEMO_MODE=true .venv/bin/uvicorn app.main:app --env-file .env --port 8000` (plain
    `uvicorn` does **not** read `.env`).
 
 In the running app any failed OCI call falls back to the offline answer so
@@ -308,7 +322,7 @@ python3 demo/run_demo.py    # signs in, uploads all 4 sample letters, prints FIN
 
 ```bash
 # terminal 1
-uvicorn app.main:app --port 8000
+DEMO_MODE=true uvicorn app.main:app --port 8000
 # terminal 2
 cd frontend && npm run dev
 ```

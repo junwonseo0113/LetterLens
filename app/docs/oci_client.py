@@ -23,7 +23,7 @@ from dataclasses import dataclass
 from app.i18n import document_name_zh
 from app.number_guard import assert_numbers_preserved
 from app.oci_genai import genai_chat, language_name, oci_config, parse_json_object
-from app.trace import call_with_fallback
+from app.trace import call_real_or_sample, call_with_fallback
 
 from .schemas import SCHEMA_BY_TYPE, LetterType
 
@@ -264,21 +264,26 @@ def _real_explain(letter_type: LetterType, fields: dict, language: str) -> str:
 # ---------------------------------------------------------------------------
 
 
+# Reading a letter's facts (OCR, type, fields) never falls back to sample
+# data outside MOCK_MODE -- see app.trace.call_real_or_sample. Only the
+# explanation (built from the real fields) may fall back to a template.
+
+
 def ocr_document(image_bytes: bytes, filename: str) -> OcrResult:
-    """OCI Document Understanding: OCR + key-value extraction."""
-    return call_with_fallback(lambda: _real_ocr(image_bytes), lambda: _mock_ocr(filename))
+    """OCI Document Understanding: read the text of the photo."""
+    return call_real_or_sample(lambda: _real_ocr(image_bytes), lambda: _mock_ocr(filename))
 
 
 def classify_letter(raw_text: str) -> LetterType:
     """OCI GenAI: classify the letter type from its OCR'd text."""
-    return call_with_fallback(lambda: _real_classify(raw_text), lambda: _mock_classify(raw_text))
+    return call_real_or_sample(lambda: _real_classify(raw_text), lambda: _mock_classify(raw_text))
 
 
 def extract_fields(
     letter_type: LetterType, raw_text: str, key_values: dict, retry_after_invalid: bool = False
 ) -> dict:
     """OCI GenAI: extract typed fields for the given letter type."""
-    return call_with_fallback(
+    return call_real_or_sample(
         lambda: _real_extract(letter_type, raw_text, key_values, retry_after_invalid),
         lambda: _mock_extract(letter_type, raw_text),
     )

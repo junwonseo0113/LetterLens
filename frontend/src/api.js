@@ -9,10 +9,16 @@ async function handleResponse(response) {
   if (!response.ok) {
     let detail = response.statusText;
     let detailZh = "";
+    let fromServer = false;
+    let retryable = response.status >= 500;
     try {
       const body = await response.json();
-      detail = body.detail || detail;
+      if (typeof body.detail === "string") {
+        detail = body.detail;
+        fromServer = true;
+      }
       detailZh = body.detail_zh || "";
+      if (typeof body.retryable === "boolean") retryable = body.retryable;
     } catch {
       // response had no JSON body -- keep statusText
     }
@@ -20,6 +26,8 @@ async function handleResponse(response) {
     const error = new Error(detail);
     error.status = response.status;
     error.detailZh = detailZh;
+    error.fromServer = fromServer;
+    error.retryable = retryable;
     throw error;
   }
   return response.json();
@@ -28,6 +36,14 @@ async function handleResponse(response) {
 // Pick the backend's error message in the user's language when it sent one.
 export function errorText(error, language) {
   return (language === "zh" && error.detailZh) || error.message;
+}
+
+// The server's explanation of an error, if it gave one we can show (English
+// or Chinese). Network failures ("Failed to fetch") return "".
+export function serverDetail(error, language) {
+  if (!error?.fromServer) return "";
+  if (language === "zh") return error.detailZh || "";
+  return language === "en" ? error.message : "";
 }
 
 function jsonRequest(method, path, body, headers = {}) {
@@ -48,6 +64,23 @@ export async function uploadLetter({ file, language, token }) {
   formData.append("language", language);
   const response = await fetch(`${API_BASE}/letters`, { method: "POST", headers: bearer(token), body: formData });
   return handleResponse(response);
+}
+
+export function fetchLetter(token, letterId, language) {
+  return jsonRequest(
+    "GET",
+    `/letters/${letterId}?language=${encodeURIComponent(language)}`,
+    undefined,
+    bearer(token),
+  );
+}
+
+export function answerQuestion(token, key, value) {
+  return jsonRequest("POST", "/profile/answers", { key, value }, bearer(token));
+}
+
+export function fetchCurrentApplication(token, program = "MSP") {
+  return jsonRequest("GET", `/applications/current?program=${program}`, undefined, bearer(token));
 }
 
 export function fetchLetters(token) {
@@ -128,8 +161,13 @@ export function fetchReviewQueue(key) {
   return jsonRequest("GET", "/review-queue", undefined, caseworker(key));
 }
 
-export function approveApplication(key, applicationId, note) {
-  return jsonRequest("POST", `/review-queue/${applicationId}/approve`, { note }, caseworker(key));
+export function approveApplication(key, applicationId, note, verifiedDocuments = []) {
+  return jsonRequest(
+    "POST",
+    `/review-queue/${applicationId}/approve`,
+    { note, verified_documents: verifiedDocuments },
+    caseworker(key),
+  );
 }
 
 export function requestMoreInfo(key, applicationId, note) {

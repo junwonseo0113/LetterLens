@@ -20,6 +20,7 @@ const NO_TAB_BAR = new Set(["/", "/sign-in", "/caseworker"]);
 const PROTECTED_ROUTES = [
   { path: "/home", Screen: Home },
   { path: "/letter-result", Screen: LetterResult },
+  { path: "/letters/:letterId", Screen: LetterResult },
   { path: "/benefits", Screen: BenefitsFound },
   { path: "/application-pack", Screen: ApplicationPack },
   { path: "/caseworker-card", Screen: CaseworkerCard },

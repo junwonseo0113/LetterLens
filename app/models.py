@@ -43,14 +43,21 @@ class ProfileRecord(SQLModel, table=True):
     # Documented current enrollment -- distinct from the rules engine's
     # computed "likely eligible for QMB", which is a separate question.
     on_qmb: bool = False
+    # Income of other household members (not self/spouse); SNAP only.
+    other_household_income_monthly: Optional[float] = None
 
-    # field_name -> letter_id that most recently set it
+    # field_name -> where the value came from: a letter id (int), "user"
+    # (answered a question) or "application" (answered in the application).
+    # A field with no entry here is UNKNOWN, whatever its default value is.
     field_sources: dict = Field(default_factory=dict, sa_column=Column(JSON))
 
-    def set_provenance(self, field_name: str, letter_id: int) -> None:
+    def set_provenance(self, field_name: str, source: int | str) -> None:
         sources = dict(self.field_sources or {})
-        sources[field_name] = letter_id
+        sources[field_name] = source
         self.field_sources = sources
+
+    def is_known(self, field_name: str) -> bool:
+        return field_name in (self.field_sources or {})
 
 
 class LetterRecord(SQLModel, table=True):
@@ -58,6 +65,12 @@ class LetterRecord(SQLModel, table=True):
     user_id: str
     letter_type: str
     extracted_fields: dict = Field(default_factory=dict, sa_column=Column(JSON))
+    # True when the values came from MOCK_MODE's canned sample data rather
+    # than reading the uploaded photo. Shown as "Sample" everywhere.
+    is_sample: Optional[bool] = None
+    # The explanation shown at upload, so the letter can be reopened later.
+    explanation: Optional[str] = None
+    explanation_language: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
@@ -110,6 +123,9 @@ class ApplicationRecord(SQLModel, table=True):
     # Document keys the user photographed in-app. The photos themselves
     # are discarded on upload, same rule as letters.
     documents_provided: list[str] = Field(default_factory=list, sa_column=Column(JSON))
+    # Document keys a caseworker confirmed by seeing the original. A photo
+    # alone is only "uploaded" -- it's discarded, so nobody can check it later.
+    documents_verified: Optional[list] = Field(default=None, sa_column=Column(JSON))
 
     signature_png: Optional[str] = None  # data: URL from the signature pad
     signed_at: Optional[datetime] = None

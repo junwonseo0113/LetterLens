@@ -15,6 +15,7 @@ sys.path.insert(0, str(REPO_ROOT))
 DEMO_DB_PATH = Path(__file__).resolve().parent / "demo_letterlens.db"
 os.environ["DATABASE_URL"] = f"sqlite:///{DEMO_DB_PATH}"
 os.environ.setdefault("MOCK_MODE", "true")
+os.environ.setdefault("DEMO_MODE", "true")
 
 from sqlmodel import SQLModel  # noqa: E402
 

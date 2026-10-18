@@ -1231,3 +1231,172 @@ pre.letter-text {
   background: var(--color-success-text);
   border-color: var(--color-success-text);
 }
+
+/* --- Errors, sample labels, missing-information questions ----------------- */
+
+.error-box {
+  background: var(--color-danger-bg);
+  color: var(--color-ink);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+}
+
+.error-box-title {
+  margin: 0;
+  font-weight: 700;
+  color: var(--color-danger);
+}
+
+.error-box-detail {
+  margin: 6px 0 0;
+  font-size: var(--font-size-sm);
+}
+
+.error-box-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.error-box-retry,
+.error-box-dismiss {
+  min-height: 44px;
+  padding: 8px 18px;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-ui);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.error-box-retry {
+  border: none;
+  background: var(--color-danger);
+  color: #fff;
+}
+
+.error-box-dismiss {
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-ink);
+}
+
+.tab-bar-toast {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: calc(100% + 8px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  border-radius: var(--radius-md);
+}
+
+.form-error {
+  margin: 6px 0 0;
+  color: var(--color-danger);
+  font-weight: 600;
+}
+
+.muted-line {
+  margin: 0;
+  color: var(--color-muted);
+}
+
+.sample-badge {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--color-warn-bg);
+  color: var(--color-warn-text);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  vertical-align: middle;
+}
+
+.sample-note {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: var(--color-warn-bg);
+  color: var(--color-warn-text);
+  font-size: var(--font-size-sm);
+}
+
+.missing-info-prompt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  background: var(--color-warn-bg);
+  color: var(--color-warn-text);
+  text-decoration: none;
+}
+
+.missing-info-prompt span:not(.nav-row-chevron) {
+  flex: 1;
+}
+
+.missing-info-card h2 {
+  margin-top: 0;
+}
+
+.question-row {
+  padding: 14px 0;
+  border-top: 1px solid var(--color-separator);
+}
+
+.question-text {
+  margin: 0 0 10px;
+  font-weight: 700;
+}
+
+.question-buttons,
+.question-form {
+  display: flex;
+  gap: 10px;
+}
+
+.question-buttons .big-button,
+.question-form .big-button {
+  width: auto;
+  flex: 1;
+  margin: 0;
+}
+
+.question-form .text-input {
+  flex: 2;
+}
+
+.benefit-tile.tone-gray {
+  background: var(--color-neutral-bg);
+}
+
+.status-text.missing_info {
+  color: var(--color-warn-text);
+}
+
+a.letter-list-item,
+a.reminder-item {
+  color: inherit;
+  text-decoration: none;
+}
+
+.cw-docs {
+  list-style: none;
+  padding-left: 0;
+}
+
+.cw-docs label {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 6px 0;
+  cursor: pointer;
+}
+
+.cw-docs input {
+  width: 22px;
+  height: 22px;
+  margin-top: 2px;
+  flex-shrink: 0;
+}

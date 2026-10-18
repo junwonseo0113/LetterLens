@@ -19,7 +19,10 @@ _CN_NUM_RUN = re.compile(r"[零〇○一二两三四五六七八九十百千万]
 _EN_NUMBERS = {"zero": 0, "none": 0, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
                "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10}
 
-_NONE_WORDS = ("没有", "无", "沒有", "none", "nothing", "no income", "zero")
+_NONE_WORDS = (
+    "没有", "无", "沒有", "none", "nothing", "no income", "zero",
+    "없어", "없음", "nada", "ninguno", "ninguna", "cero", "ничего", "ноль",
+)
 
 
 class FieldValueError(ValueError):
@@ -70,30 +73,64 @@ def normalize_date(raw: str) -> str:
     return value.isoformat()
 
 
-def normalize_number(raw: str) -> str:
+_NEGATIVE_RE = re.compile(r"(^|[\s(])(-|−|minus\b|负|마이너스|menos\b|минус)\s*\$?\s*\d")
+
+
+def _parse_amount(raw: str) -> float:
     text = raw.strip().lower()
-    if any(word in text for word in _NONE_WORDS):
-        return "0"
+    if text in ("no", "0", "нет", "아니요", "아니오") or any(word in text for word in _NONE_WORDS):
+        return 0.0
     text = cn_numerals_to_digits(text)
     for word, value in _EN_NUMBERS.items():
         text = re.sub(rf"\b{word}\b", str(value), text)
+    if _NEGATIVE_RE.search(text):
+        raise FieldValueError("This can't be a negative number.", "这里不能是负数。")
     match = re.search(r"\d[\d,]*(?:\.\d+)?", text)
     if not match:
         raise FieldValueError("Please say a number.", "请说一个数字。")
-    value = float(match.group().replace(",", ""))
+    return float(match.group().replace(",", ""))
+
+
+def _format_amount(value: float) -> str:
     return f"{value:.2f}".rstrip("0").rstrip(".")
+
+
+def normalize_money(raw: str) -> str:
+    """A dollar amount: zero or more. "none"/"没有" mean 0."""
+    return _format_amount(_parse_amount(raw))
+
+
+def normalize_count(raw: str) -> str:
+    """How many people: a whole number, at least 1."""
+    value = _parse_amount(raw)
+    if value != int(value) or not 1 <= value <= 30:
+        raise FieldValueError("Please give a whole number, like 1 or 2.", "请说一个整数，比如1或2。")
+    return str(int(value))
+
+
+def normalize_age(raw: str) -> str:
+    value = _parse_amount(raw)
+    if value != int(value) or not 1 <= value <= 120:
+        raise FieldValueError("Please give your age in years, like 74.", "请说您的年龄，比如74。")
+    return str(int(value))
+
+
+# Checked before the "yes" words, since "没有结婚" contains "结婚" and
+# "아니요" must not match anything positive.
+_NO_WORDS_RE = re.compile(
+    r"\b(no|not|nope|single|widowed|divorced|never|nunca|solter[ao]|viud[ao]|divorciad[ao]|"
+    r"нет|не|холост\w*|вдов\w*|развед\w*|незамуж\w*)\b"
+)
+_NO_SUBSTRINGS = ("不", "没", "否", "单身", "未婚", "丧偶", "离婚", "아니", "아뇨", "없", "안 ", "미혼", "이혼", "사별")
+_YES_WORDS_RE = re.compile(r"\b(yes|yeah|yep|married|s[ií]|claro|casad[ao]|да|конечно|женат|замужем)\b")
+_YES_SUBSTRINGS = ("是", "对", "有", "已婚", "结婚", "嗯", "네", "예", "응", "맞아", "있", "기혼", "결혼")
 
 
 def normalize_yes_no(raw: str) -> str:
     text = raw.strip().lower()
-    # Negatives first: "没有结婚" contains "结婚".
-    if re.search(r"\b(no|not|nope|single|widowed|divorced)\b", text) or any(
-        word in text for word in ("不", "没", "否", "单身", "未婚", "丧偶", "离婚")
-    ):
+    if _NO_WORDS_RE.search(text) or any(word in text for word in _NO_SUBSTRINGS):
         return "no"
-    if re.search(r"\b(yes|yeah|yep|married)\b", text) or any(
-        word in text for word in ("是", "对", "有", "已婚", "结婚", "嗯")
-    ):
+    if _YES_WORDS_RE.search(text) or any(word in text for word in _YES_SUBSTRINGS):
         return "yes"
     raise FieldValueError("Please answer yes or no.", "请回答“是”或“不是”。")
 
@@ -127,7 +164,11 @@ def normalize_text(raw: str) -> str:
 
 NORMALIZERS = {
     "date": normalize_date,
-    "number": normalize_number,
+    "money": normalize_money,
+    "count": normalize_count,
+    "age": normalize_age,
+    # Older name for "money", kept so saved applications still validate.
+    "number": normalize_money,
     "yesno": normalize_yes_no,
     "phone": normalize_phone,
     "medicare_number": normalize_medicare_number,

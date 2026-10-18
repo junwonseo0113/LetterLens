@@ -19,13 +19,13 @@ sys.path.insert(0, str(REPO_ROOT))
 
 os.environ["DATABASE_URL"] = f"sqlite:///{DEMO_DIR / 'demo_letterlens.db'}"
 os.environ.setdefault("MOCK_MODE", "true")
+os.environ.setdefault("DEMO_MODE", "true")
 
 from fastapi.testclient import TestClient  # noqa: E402
-from sqlmodel import Session, SQLModel  # noqa: E402
+from sqlmodel import SQLModel  # noqa: E402
 
 from app.db import engine  # noqa: E402
 from app.main import app  # noqa: E402
-from app.models import ProfileRecord  # noqa: E402
 
 PHONE = "718-555-0142"
 LANGUAGE = "zh"
@@ -93,22 +93,17 @@ def main() -> None:
         for filename, label in INTAKE_LETTERS:
             _upload(client, auth, filename, label)
 
-        # Age isn't extracted from any letter type yet (no fixture
-        # documents it) -- set it directly so the FIND step below reflects
-        # the persona's real age. We also simulate that she successfully
-        # enrolled in QMB after an earlier FIND pass, so the PROTECT
-        # illegal-billing flow has something real to flag in this walkthrough.
-        with Session(engine) as session:
-            profile = session.get(ProfileRecord, user_id)
-            profile.age = 74
-            profile.on_qmb = True
-            session.add(profile)
-            session.commit()
-        print(
-            "\n(Demo note: set age=74 and on_qmb=True directly in the DB -- no letter "
-            "type extracts age yet, and we're simulating a prior successful QMB "
-            "enrollment so PROTECT has something to flag below.)"
-        )
+        # No sample letter states these facts, so she answers the app's
+        # "More information needed" questions -- unknown facts are asked,
+        # never assumed. Then we simulate that she enrolled in QMB after an
+        # earlier FIND pass, so PROTECT has something real to flag below.
+        print("\n--- More information needed: she answers the app's questions ---")
+        for key, value in [("earned_income_monthly", "没有"), ("married", "没有"),
+                           ("household_size", "一个人"), ("age", "74")]:
+            client.post("/profile/answers", json={"key": key, "value": value}, headers=auth).raise_for_status()
+            print(f"  {key}: {value!r}")
+        client.post("/profile/on-qmb", params={"on_qmb": True}, headers=auth).raise_for_status()
+        print("  (Demo: QMB enrollment switched on, so the medical bill below gets checked.)")
 
         _upload(client, auth, *BILL_LETTER)
 
