@@ -10,8 +10,11 @@ extracted facts to:
 1. **FIND** unclaimed benefits (Medicare Savings Program, Extra Help, SNAP)
 2. **KEEP** benefits (renewal deadlines, document checklists)
 3. **PROTECT** against illegal Medicare billing of QMB members
+4. **APPLY** for MSP + Extra Help: the app fills in the application from
+   the letters, asks only what's missing (by voice, in Mandarin or
+   Cantonese), and the user reviews, signs, and says yes
 
-Demo persona: Kim Soon-ja, 74, Flushing, Queens.
+Demo persona: Chen Yu-lan (陈玉兰), 74, Flushing, Queens, Mandarin speaker.
 
 ## Hard rules this architecture enforces
 
@@ -22,8 +25,17 @@ Demo persona: Kim Soon-ja, 74, Flushing, Queens.
 - **Numbers never drift.** `app/number_guard.py` checks every GenAI output
   against its source facts; any invented number, date, or dollar amount
   raises an error instead of reaching the user.
-- **Nothing is ever auto-submitted.** Pre-filled data is shown for the
-  user to review, never sent on their behalf.
+- **Nothing is sent without the user's explicit yes.** The app fills in
+  the application, but it only leaves draft after the user has seen every
+  answer (with where it came from), signed, and tapped "Yes, send it for
+  me." If documents are missing it goes to a caseworker instead.
+- **Submission is simulated, and says so.** No NY State / HRA / SSA API
+  accepts third-party filings; every application response carries
+  `simulated: true` and the UI shows a "Demo" note. A real launch would
+  file through an authorized-representative partner.
+- **Sign in before anything personal.** A phone one-time code gates every
+  screen that shows letters or builds an application. With no SMS
+  provider configured, the code is shown on screen (`DEMO_SHOW_OTP=true`).
 - **Every FIND result shows its work**: numbers used, rule applied, a
   confidence label, and "Final decision is made by NY State / HRA / SSA."
 - **MOCK_MODE=true by default.** The entire stack — OCR, classification,
@@ -74,6 +86,28 @@ Demo persona: Kim Soon-ja, 74, Flushing, Queens.
          │ (Oracle ADB = stretch swap)│  Reminder -- raw images never stored
          └───────────────────────┘
 ```
+
+## APPLY: review, sign, submit
+
+```
+sign in (phone code)
+  -> upload letters                     POST /letters
+  -> "Apply for MSP + Extra Help"       POST /applications   (pre-fills from letters + sign-in)
+  -> interview: only missing answers    PUT  /applications/{id}/fields/{key}
+       voice (browser speech, zh-CN / zh-HK) or typing; app/apply/normalize.py
+       turns "一九五二年三月五日" / "没有" into 1952-03-05 / 0 -- no LLM
+  -> review every answer + its source, add document photos, sign
+  -> "Yes, send it for me"              POST /applications/{id}/submit
+       all documents present  -> submitted (confirmation number + timeline)
+       documents missing      -> needs_review -> caseworker queue (/caseworker)
+                                   approve -> submitted
+                                   request info -> user fixes, resubmits
+```
+
+The application form (`app/apply/templates.py`) follows NY's DOH-4328 MSP
+application; applying for MSP also gets Extra Help automatically. Document
+photos are discarded on upload like letter images -- only "provided" is
+recorded.
 
 ## OCI services used, and why
 
@@ -151,14 +185,18 @@ app/
   keep/         M5 -- renewal reminders with countdown, GET /reminders
   protect/      M5 -- QMB illegal-billing check + dispute letter draft
   benefits/     M7 -- bridges stored Profile -> rules engine -> explain, GET /benefits
+  auth/         phone one-time-code sign-in, /auth/*
+  apply/        application pre-fill, interview answer normalizing, review/sign/
+                submit, caseworker queue -- /applications, /review-queue
   models.py     SQLModel tables: ProfileRecord, LetterRecord, Reminder
   db.py         SQLite engine/session (DATABASE_URL-configurable)
   number_guard.py / oci_genai.py   shared helpers used across the GenAI call sites
   main.py       FastAPI app, CORS, router wiring
-tests/          42 tests: rules engine (A-J), document pipeline, explain,
-                keep/protect, benefits endpoint
+tests/          82 tests: rules engine (A-J), document pipeline, explain,
+                keep/protect, benefits endpoint, sign-in + applications
 demo/           M7 -- fixtures, seed script, full persona walkthrough script
-frontend/       M6 -- React + Vite UI, 7 screens
+frontend/       M6 -- React + Vite UI: language, sign-in, letters, benefits,
+                apply interview / review / status, caseworker queue
 ```
 
 ## Setup
@@ -196,19 +234,22 @@ Root `.env` (backend, see `.env.example`):
 | `OCI_COMPARTMENT_ID` | _(empty)_ | Required when `MOCK_MODE=false` |
 | `OCI_GENAI_MODEL_ID` | _(empty)_ | Required when `MOCK_MODE=false` |
 | `OCI_REGION` | `us-chicago-1` | Only read when `MOCK_MODE=false` |
+| `DEMO_SHOW_OTP` | `true` | Return the sign-in code in the API response (no SMS provider yet) |
+| `CASEWORKER_KEY` | `demo-caseworker` | Shared key for the `/review-queue` endpoints |
 
 Frontend `frontend/.env.local` (see `frontend/.env.example`):
 
 | Var | Default | Purpose |
 |---|---|---|
 | `VITE_API_BASE_URL` | `http://localhost:8000` | Backend base URL the UI calls |
+| `VITE_CASEWORKER_KEY` | `demo-caseworker` | Pre-fills the key on the `/caseworker` screen |
 
 Never commit `.env` or `.env.local` — both are gitignored.
 
 ## Running the tests
 
 ```bash
-python3 -m pytest -q          # 52 tests: pure functions + FastAPI TestClient, no servers needed, MOCK_MODE only
+python3 -m pytest -q          # 82 tests: pure functions + FastAPI TestClient, no servers needed, MOCK_MODE only
 cd frontend && npm run build && npm run lint
 ```
 
@@ -223,7 +264,7 @@ or region surfaces before you're on stage, not during.
 
 ```bash
 python3 demo/seed.py        # resets the demo SQLite DB
-python3 demo/run_demo.py    # uploads all 4 sample letters, prints FIND/KEEP/PROTECT
+python3 demo/run_demo.py    # signs in, uploads all 4 sample letters, prints FIND/KEEP/PROTECT/APPLY
 ```
 
 **Option B -- full UI walkthrough:**
@@ -235,13 +276,14 @@ uvicorn app.main:app --port 8000
 cd frontend && npm run dev
 ```
 
-Open the app, pick a language, tap "Take a photo of a letter," and upload
+Open the app, pick 中文, sign in with any 10-digit number (the code is
+shown on screen), tap "Take a photo of a letter," and upload
 one of the four watermarked SAMPLE images in `demo/`. They're clearly
 marked fake documents — `MOCK_MODE` dispatches canned OCR text by
 filename keyword, it never reads the pixels, so any renamed copy of these
 files will misclassify.
 
-Suggested order (persona: Kim Soon-ja, 74, Flushing, Queens):
+Suggested order (persona: Chen Yu-lan, 74, Flushing, Queens):
 
 1. `ssa_benefit_letter_sample.jpg` -- gross $1,700/mo explained
 2. `bank_statement_sample.jpg` -- $40,000 savings (doesn't count for MSP)
@@ -249,6 +291,10 @@ Suggested order (persona: Kim Soon-ja, 74, Flushing, Queens):
 4. `medical_bill_sample.jpg` -- flagged as a possible illegal charge only
    if the profile's `on_qmb` is set (see note below)
 5. "See benefits found" -- QMB / Extra Help (auto via QMB) / SNAP, all "likely"
+6. "Apply for MSP + Extra Help" -- 4 of 9 answers pre-filled; answer the
+   other 5 by voice; review, sign, "Yes, send it for me"
+7. Open `/caseworker` in a second tab -- approve, or request info and
+   watch the user's status change
 
 **Known gap:** no letter type currently extracts age or current QMB
 enrollment status -- nothing in the 4 extraction schemas captures either

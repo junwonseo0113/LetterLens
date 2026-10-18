@@ -1,6 +1,6 @@
-"""End-to-end demo script for the hackathon persona: Kim Soon-ja, 74,
-Flushing, Queens NY. Drives the full upload -> FIND -> KEEP -> PROTECT
-flow against the real FastAPI app in MOCK_MODE (fully offline), using the
+"""End-to-end demo script for the hackathon persona: Chen Yu-lan (陈玉兰), 74,
+Flushing, Queens NY, Mandarin speaker. Drives the full sign-in -> upload ->
+FIND -> APPLY -> KEEP -> PROTECT flow against the real FastAPI app in MOCK_MODE (fully offline), using the
 sample letters in this directory. No server needs to be running.
 
 Run with: python demo/run_demo.py
@@ -21,14 +21,23 @@ os.environ["DATABASE_URL"] = f"sqlite:///{DEMO_DIR / 'demo_letterlens.db'}"
 os.environ.setdefault("MOCK_MODE", "true")
 
 from fastapi.testclient import TestClient  # noqa: E402
-from sqlmodel import Session  # noqa: E402
+from sqlmodel import Session, SQLModel  # noqa: E402
 
 from app.db import engine  # noqa: E402
 from app.main import app  # noqa: E402
 from app.models import ProfileRecord  # noqa: E402
 
-USER_ID = "kim_soonja"
-LANGUAGE = "ko"
+PHONE = "718-555-0142"
+LANGUAGE = "zh"
+SIGNATURE = "data:image/png;base64,iVBORw0KGgo="
+# What she says out loud during the interview (browser speech -> text).
+SPOKEN_ANSWERS = {
+    "date_of_birth": "一九五二年三月五日",
+    "medicare_number": "1EG4-TE5-MK73",
+    "married": "没有，我丈夫去世了",
+    "household_size": "一个人",
+    "monthly_work_income": "没有",
+}
 
 INTAKE_LETTERS = [
     ("ssa_benefit_letter_sample.jpg", "SSA benefit letter"),
@@ -38,13 +47,13 @@ INTAKE_LETTERS = [
 BILL_LETTER = ("medical_bill_sample.jpg", "Medical bill")
 
 
-def _upload(client: TestClient, filename: str, label: str) -> dict:
+def _upload(client: TestClient, user_id: str, filename: str, label: str) -> dict:
     path = DEMO_DIR / filename
     with open(path, "rb") as f:
         response = client.post(
             "/letters",
             files={"file": (filename, f, "image/jpeg")},
-            data={"language": LANGUAGE, "user_id": USER_ID},
+            data={"language": LANGUAGE, "user_id": user_id},
         )
     response.raise_for_status()
     body = response.json()
@@ -66,12 +75,22 @@ def main() -> None:
     start = time.time()
 
     print("=" * 70)
-    print("LetterLens demo -- persona: Kim Soon-ja, 74, Flushing, Queens NY")
+    print("LetterLens demo -- persona: Chen Yu-lan (陈玉兰), 74, Flushing, Queens NY")
     print("=" * 70)
 
+    # Start clean so the walkthrough is identical every run.
+    SQLModel.metadata.drop_all(engine)
+
     with TestClient(app) as client:
+        print("\n--- Sign in with a phone code ---")
+        code = client.post("/auth/request-code", json={"phone": PHONE}).json()["demo_code"]
+        session_out = client.post("/auth/verify", json={"phone": PHONE, "code": code}).json()
+        user_id = session_out["user_id"]
+        auth = {"Authorization": f"Bearer {session_out['token']}"}
+        print(f"Code {code} verified -> signed in as {user_id}")
+
         for filename, label in INTAKE_LETTERS:
-            _upload(client, filename, label)
+            _upload(client, user_id, filename, label)
 
         # Age isn't extracted from any letter type yet (no fixture
         # documents it) -- set it directly so the FIND step below reflects
@@ -79,7 +98,7 @@ def main() -> None:
         # enrolled in QMB after an earlier FIND pass, so the PROTECT
         # illegal-billing flow has something real to flag in this walkthrough.
         with Session(engine) as session:
-            profile = session.get(ProfileRecord, USER_ID)
+            profile = session.get(ProfileRecord, user_id)
             profile.age = 74
             profile.on_qmb = True
             session.add(profile)
@@ -90,10 +109,10 @@ def main() -> None:
             "enrollment so PROTECT has something to flag below.)"
         )
 
-        _upload(client, *BILL_LETTER)
+        _upload(client, user_id, *BILL_LETTER)
 
         print("\n--- KEEP: upcoming deadlines ---")
-        reminders = client.get("/reminders", params={"user_id": USER_ID}).json()
+        reminders = client.get("/reminders", params={"user_id": user_id}).json()
         for r in reminders:
             print(
                 f"{r['program']}: due {r['deadline']} "
@@ -102,7 +121,7 @@ def main() -> None:
             print(f"  Checklist: {r['checklist']}")
 
         print("\n--- FIND: benefits found ---")
-        benefits = client.get("/benefits", params={"user_id": USER_ID, "language": LANGUAGE}).json()
+        benefits = client.get("/benefits", params={"user_id": user_id, "language": LANGUAGE}).json()["results"]
         for b in benefits:
             print(f"\n{b['program']}: {b['status']} (confidence={b['confidence']})")
             print(f"  Monthly value: ${b['monthly_value']:,.2f}  Annual: ${b['annual_value']:,.2f}")
@@ -114,6 +133,30 @@ def main() -> None:
             if b["warnings"]:
                 print(f"  Warnings: {b['warnings']}")
             print(f"  {b['disclaimer']}")
+
+        print("\n--- APPLY: MSP + Extra Help, filled in for her ---")
+        application = client.post("/applications", json={"program": "MSP"}, headers=auth).json()
+        prefilled = [f for f in application["fields"] if f["value"] is not None]
+        print(f"Pre-filled {len(prefilled)} of {len(application['fields'])} answers from her letters and sign-in:")
+        for f in prefilled:
+            print(f"  {f['label_en']}: {f['value']}  (source: {f['source']})")
+        while application["next_question"]:
+            key = application["next_question"]
+            spoken = SPOKEN_ANSWERS[key]
+            application = client.put(
+                f"/applications/{application['id']}/fields/{key}", json={"value": spoken}, headers=auth
+            ).json()
+            value = next(f["value"] for f in application["fields"] if f["key"] == key)
+            print(f"  Asked {key!r}, she said {spoken!r} -> {value}")
+
+        application = client.post(
+            f"/applications/{application['id']}/submit",
+            json={"signature_png": SIGNATURE, "confirmed": True},
+            headers=auth,
+        ).json()
+        print(f"She reviewed, signed and said yes -> status: {application['status']}")
+        if application["status"] == "needs_review":
+            print(f"  Routed to a caseworker; missing documents: {application['review_reason']}")
 
     elapsed = time.time() - start
     print("\n" + "=" * 70)

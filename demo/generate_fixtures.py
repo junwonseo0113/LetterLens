@@ -187,9 +187,9 @@ def make_ssa_benefit_letter() -> None:
         "SSA",
         (0, 90, 60),
         ["Social Security Administration", "Benefit Verification Letter"],
-        ["Date: January 2, 2026", "BNC#: SAMPLE-0001", "REF: KIM-SOONJA"],
+        ["Date: January 2, 2026", "BNC#: SAMPLE-0001", "REF: CHEN-YULAN"],
     )
-    l.address_block(["Kim, Soon-ja", "123 Northern Blvd, Apt 4B", "Flushing, NY 11354"])
+    l.address_block(["Chen, Yu-lan", "123 Northern Blvd, Apt 4B", "Flushing, NY 11354"])
     l.body(
         [
             "You asked us for information from your record. The information",
@@ -218,7 +218,7 @@ def make_bank_statement() -> None:
         ["Sample Community Bank", "Checking Account Statement"],
         ["Statement period:", "Sep 1 - Sep 30, 2026"],
     )
-    l.address_block(["Account holder: Kim, Soon-ja", "123 Northern Blvd, Apt 4B", "Flushing, NY 11354"])
+    l.address_block(["Account holder: Chen, Yu-lan", "123 Northern Blvd, Apt 4B", "Flushing, NY 11354"])
     l.section_header("Account Summary")
     l.box(
         [
@@ -242,7 +242,7 @@ def make_hra_renewal_notice() -> None:
     )
     l.box(
         [
-            ("Case Name", "Kim, Soon-ja"),
+            ("Case Name", "Chen, Yu-lan"),
             ("Case Number", "SAMPLE-0001"),
             ("Program", "SNAP"),
         ]
@@ -271,7 +271,7 @@ def make_medical_bill() -> None:
         ["Queens General Hospital", "Billing Statement"],
         ["Statement date: Oct 5, 2026", "Account: SAMPLE-0001"],
     )
-    l.address_block(["Patient: Kim, Soon-ja", "123 Northern Blvd, Apt 4B", "Flushing, NY 11354"])
+    l.address_block(["Patient: Chen, Yu-lan", "123 Northern Blvd, Apt 4B", "Flushing, NY 11354"])
     l.section_header("Your Claims & Costs This Period")
     l.box(
         [

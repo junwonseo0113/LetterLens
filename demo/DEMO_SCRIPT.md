@@ -1,6 +1,6 @@
 # LetterLens live demo script
 
-Persona: **Kim Soon-ja, 74, Flushing, Queens.** Target: under 3 minutes for
+Persona: **Chen Yu-lan (陈玉兰), 74, Flushing, Queens, Mandarin speaker.** Target: under 3 minutes for
 the core walkthrough, leaving room for Q&A.
 
 ## Before you go on stage
@@ -28,77 +28,86 @@ npm run dev -- --host 0.0.0.0 --port 5173
   from the laptop browser at `localhost:5173`, or use the scripted
   transcript below.
 - **Fallback if anything breaks live**: `python3 demo/run_demo.py` runs
-  the entire FIND/KEEP/PROTECT flow against the real backend in under a
+  the entire sign-in/FIND/APPLY/KEEP/PROTECT flow against the real backend in under a
   second and prints a full transcript. Have a terminal window ready as a
   safety net.
 
 ## The pitch frame (say this before you start clicking)
 
-> "Kim Soon-ja is 74, lives in Flushing, speaks Korean. She gets an
-> English letter from Social Security and has no idea what it means or
-> whether she's owed money. LetterLens photographs the letter, explains
-> it in her language, and automatically checks her against three
-> programs she's probably eligible for but never applied to."
+> "Chen Yu-lan is 74, lives in Flushing, and speaks Mandarin. She gets
+> English letters from Social Security and has no idea she's leaving
+> about $2,400 a year on the table. New York has roughly 877,000 people
+> eligible for SNAP who aren't enrolled, and nationally 6.6 million older
+> adults are missing out on Medicare Savings Programs. They aren't
+> ineligible. The process is in English, it's confusing, and they assume
+> their savings or their home disqualifies them. LetterLens reads her
+> letters, tells her in Chinese what she qualifies for, then **fills in
+> the application for her. Her only job is to say yes.**"
 
 Mention early: **"Every number here is checked against SSA/NY State
-limits by a deterministic Python rules engine — the AI never decides
-eligibility, it only explains."** This is your strongest differentiator
-and worth saying before anyone asks.
+limits by a deterministic Python rules engine. The AI never decides
+eligibility; it only explains."**
 
 ## Walkthrough
 
-**1. Language picker** — tap 한국어. *"Five languages, big buttons,
-built for someone who doesn't read small English text comfortably."*
+**1. Language picker**: tap 中文 (it's first). *"Five languages, built
+Chinese-first for Flushing and Chinatown."*
 
-**2. Upload the SSA letter** (`ssa_benefit_letter_sample.jpg`) — tap 📷,
-pick the file. *"OCI Document Understanding reads the letter, OCI
-Generative AI classifies it and extracts the numbers — gross benefit,
-Part B deduction, net payment — then explains it in her language."*
-Point out: numbers stay in English/Arabic numerals even in the
-translated text, never retranslated — that's deliberate, a mistranslated
-dollar amount is a real-world harm.
+**2. Sign in**: type any 10-digit number, tap 给我发验证码, type the code
+shown in the green box, tap 登录. *"Before she uploads anything personal,
+we verify it's her phone. That's how we answer 'why should I trust this
+app with my documents?' In production it's a real text message; for the
+demo the code is shown on screen."*
 
-**3. Upload the bank statement** — same flow. *"$40,000 in savings. On
-paper that sounds disqualifying. It isn't — New York doesn't count
-savings for the Medicare Savings Program. The app says that explicitly,
-not just 'you may qualify.'"*
+**3. Upload the SSA letter** (`ssa_benefit_letter_sample.jpg`): tap 📷.
+*"OCI Document Understanding reads it, OCI Generative AI classifies it,
+pulls out the numbers and her name and address, and explains it in
+Chinese."* The numbers stay exactly as printed. A mistranslated dollar
+amount is a real-world harm.
 
-**4. Upload the SNAP renewal notice** (`hra_snap_renewal_notice_sample.jpg`)
-— *"This creates a reminder with a real countdown, and a document
-checklist. Watch — "* go back to Home, point at the reminder line: it
-already shows **1/3 documents ready**, because it cross-checked the SSA
-letter she already uploaded against "proof of income." *"Access NYC
-tells you what documents you need. We check whether you actually have
-them yet, and flag exactly what's missing."* This is your second
-differentiator — say it clearly.
+**4. Upload the bank statement**: *"$40,000 in savings. On paper that
+sounds disqualifying. It isn't: New York doesn't count savings for the
+Medicare Savings Program. The app says so explicitly."*
 
-**5. Toggle "I'm enrolled in QMB"** on the Home screen. *"In the real
-product this would come from her Medicaid card or a QMB notice — for
-the demo, imagine she enrolled last month after an earlier FIND pass."*
+**5. 查看可领取的福利 (benefits)**: QMB likely ($202.90/mo, $2,434.80/yr),
+Extra Help automatic via QMB, SNAP likely. Expand 原因 / 使用的数字 on one
+card: *"Every result shows its numbers, the rule applied, and 'Final
+decision is made by NY State / HRA / SSA.'"*
 
-**6. Upload the medical bill** (`medical_bill_sample.jpg`) — tap "Check
-this bill." *"A $20 copay for a Medicare-covered visit. Federal law
-says QMB members can't be billed for that. The app flags it and drafts
-a dispute letter — in English for the provider, and translated for her
-to review side by side, so she knows exactly what she's sending."*
+**6. Tap 申请 MSP + Extra Help**: this is the moment. Point at the green
+box: **"已经根据您的信件自动填好 4 项." Four of nine answers came from her
+letters and her sign-in.** The app only asks the five it couldn't find.
+- Tap 🎤 按一下，开始说话 and *say* "一九五二年三月五日". It becomes
+  1952-03-05. *"She just talks. Mandarin or Cantonese; there's a toggle."*
+  (Tap 🔊 to read the question aloud.)
+- Type or say the rest: Medicare number `1EG4TE5MK73`, 没有 (not
+  married), 一个人, 没有 (no work income).
 
-**7. "See benefits found"** — walk through the three cards: **QMB
-likely** ($202.90/mo, $2,434.80/yr), **Extra Help** (automatic via QMB —
-call out the myth-busting line: *"you can still get this even if your
-income looks too high on its own"*), **SNAP likely**. Tap "이유 / 사용된
-숫자" on one card to expand it. *"Every single result shows the exact
-numbers used, the rule applied, a confidence label, and this line —"*
-point at the disclaimer — *"'Final decision is made by NY State / HRA /
-SSA, not this app.' The AI explains. It never decides."*
+**7. Review**: *"Every answer, and where it came from: 来自您的社会安全局信件,
+from her Social Security letter; 您告诉我们的, she told us."* She can
+tap 修改 on anything. Sign with a finger, then tap **是的，帮我提交 (Yes,
+send it for me)**. *"The AI does the work. She reviews once and says
+yes."*
 
-**8. Application pack** — checklist with checkmarks, numbers table in
-English next to her language.
+**8. Status: 社工正在检查 (a caseworker is checking)**. *"She doesn't
+have her Medicare card photo yet. Instead of failing, the app routes
+her application to a human."*
 
-**9. Caseworker card** — tap Print. *"A bilingual one-pager she can
-hand a caseworker or bring to an interview."*
+**9. Caseworker view**: open `/caseworker` in a second tab (laptop).
+Type a note like "请拍一下您的医疗保险卡" and tap **Request info**.
+Back on her screen, refresh: 社工需要您补充材料 with the note. Tap 补充后
+重新提交, add the four photos (any image works in the demo), sign, and
+send. **已提交, with a confirmation number and a timeline** (sent → state
+review → decision letter within 45 days). Or just tap **Approve & send**
+in the caseworker tab for the short version.
 
-**10. (If time) Add to Home Screen** on the phone — *"It installs like a
-native app. No App Store review, works the moment she gets a letter."*
+Be upfront about the grey "演示" note on that screen: *"No agency
+accepts filings from apps today. In production this goes through an
+authorized-representative partner, like a community organization."*
+
+**10. (If time) PROTECT**: toggle 我已加入 QMB on Home, upload
+`medical_bill_sample.jpg`. The $20 copay is flagged, with a dispute
+letter in English and Chinese side by side.
 
 ## If a judge asks...
 
@@ -110,14 +119,23 @@ native app. No App Store review, works the moment she gets a letter."*
   → `app/number_guard.py` — every GenAI explanation is checked against
   its source facts; an invented number raises an error before it ever
   reaches the user.
-- **"What's still missing?"** → Be honest: no auth/identity verification
-  yet (`user_id` is a free string), no document type captures age or
-  current QMB enrollment (hence the manual toggle), SNAP's asset-test
-  nuance for non-elderly households is simplified. All flagged inline in
-  the code, not hidden.
+- **"Does it really submit?"** → No, and the app says so on screen. No NY
+  State / HRA / SSA API accepts third-party filings. Everything up to the
+  send is real: the pre-filled form, the signature, the caseworker
+  handoff. The last hop would go through an authorized-representative
+  partner.
+- **"How do you know it's really her?"** → Phone one-time code before
+  any upload. Today the code is shown on screen (no SMS provider wired);
+  swapping in a real SMS sender is one function, `app/auth/service.py`
+  `send_code()`.
+- **"What's still missing?"** → Be honest: SMS delivery for the sign-in
+  code, real agency filing, caseworker accounts (one shared key today),
+  no document type captures age or current QMB enrollment (hence the
+  manual toggle), SNAP's asset-test nuance for non-elderly households is
+  simplified. All flagged inline in the code, not hidden.
 
 ## Time budget
 
-Steps 1–9 above run in roughly 90 seconds of actual clicking if you
+Steps 1–9 above run in roughly 2 minutes of actual clicking if you
 don't pause to narrate every line — practice it once end to end so the
 live version isn't the first time you've done it back to back.
