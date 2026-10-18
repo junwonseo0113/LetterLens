@@ -18,6 +18,15 @@ def list_benefits(
     return get_benefits(session, user_id, language)
 
 
+@router.get("/profile/on-qmb")
+def get_on_qmb(user_id: str = Query("demo"), session: Session = Depends(get_session)) -> dict:
+    """Current on_qmb value, so the UI toggle can reflect real state on
+    load instead of always starting unchecked regardless of what was
+    saved on a previous visit."""
+    profile = session.get(ProfileRecord, user_id)
+    return {"user_id": user_id, "on_qmb": bool(profile.on_qmb) if profile else False}
+
+
 @router.post("/profile/on-qmb")
 def set_on_qmb(
     on_qmb: bool, user_id: str = Query("demo"), session: Session = Depends(get_session)

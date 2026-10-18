@@ -4,7 +4,7 @@ import BigButton from "../components/BigButton";
 import IconBadge from "../components/IconBadge";
 import { useLanguage } from "../context/LanguageContext";
 import { t } from "../strings";
-import { fetchLetters, fetchReminders, setOnQmb, uploadLetter } from "../api";
+import { fetchLetters, fetchOnQmb, fetchReminders, setOnQmb, uploadLetter } from "../api";
 
 const USER_ID = "demo";
 
@@ -33,6 +33,7 @@ export default function Home() {
   useEffect(() => {
     fetchLetters(USER_ID).then(setLetters).catch(() => {});
     fetchReminders(USER_ID).then(setReminders).catch(() => {});
+    fetchOnQmb(USER_ID).then((data) => setOnQmbState(data.on_qmb)).catch(() => {});
   }, []);
 
   useEffect(() => {
