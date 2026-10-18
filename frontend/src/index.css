@@ -585,6 +585,19 @@ pre.letter-text {
   opacity: 0.6;
 }
 
+.offline-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: var(--color-warn-bg);
+  color: var(--color-warn-text);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+}
+
 @media print {
   .no-print {
     display: none !important;

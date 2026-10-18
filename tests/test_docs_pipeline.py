@@ -52,6 +52,38 @@ def test_upload_trace_shows_ocr_and_genai_steps_in_order():
     assert all(s["service"] == "OCI Generative AI (mock)" for s in trace[1:])
     assert all(s["success"] is True for s in trace)
     assert all(s["duration_ms"] >= 0 for s in trace)
+    assert all(s["offline"] is True for s in trace)
+
+
+def test_real_ocr_failure_falls_back_to_mock_and_flags_offline():
+    # MOCK_MODE=false here is a *genuine* "OCI unreachable" condition in
+    # this environment -- the oci package isn't installed, so _real_ocr
+    # raises ModuleNotFoundError on `import oci`, not a simulated failure.
+    import os
+
+    previous = os.environ.get("MOCK_MODE")
+    os.environ["MOCK_MODE"] = "false"
+    try:
+        response = _upload("ssa_sample.jpg")
+    finally:
+        if previous is None:
+            del os.environ["MOCK_MODE"]
+        else:
+            os.environ["MOCK_MODE"] = previous
+
+    assert response.status_code == 200
+    body = response.json()
+    trace = body["trace"]
+
+    # Still produces a correct, fully-formed response via the fallback --
+    # the user never sees a crash, just degraded (offline) data.
+    assert body["extracted_fields"]["gross_monthly_benefit"] == 1700.0
+
+    assert all(s["offline"] is True for s in trace)
+    assert all("(offline fallback)" in s["service"] for s in trace)
+    # Distinct from the "(mock)" label used when MOCK_MODE=true is the
+    # intended mode, not a degradation.
+    assert all("(mock)" not in s["service"] for s in trace)
 
 
 def test_bank_statement_sets_savings():

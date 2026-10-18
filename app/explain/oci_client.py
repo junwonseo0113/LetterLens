@@ -10,11 +10,11 @@ app.number_guard before being returned.
 from __future__ import annotations
 
 import json
-import os
 
 from app.number_guard import assert_numbers_preserved
 from app.oci_genai import genai_chat
 from app.rules.engine import ProgramResult
+from app.trace import call_with_fallback
 
 STATUS_PHRASES = {
     "likely": "you likely qualify for",
@@ -23,10 +23,6 @@ STATUS_PHRASES = {
     "already_enrolled": "you're already enrolled in",
     "missing_info": "we need more information to check",
 }
-
-
-def _mock_mode() -> bool:
-    return os.getenv("MOCK_MODE", "true").lower() not in ("0", "false", "no")
 
 
 def _status_value(result: ProgramResult) -> str:
@@ -74,6 +70,7 @@ def _real_explain(result: ProgramResult, language: str) -> str:
 
 def explain_program_result(result: ProgramResult, language: str) -> str:
     """OCI GenAI: plain-language explanation of one ProgramResult."""
-    if _mock_mode():
-        return _mock_explain(result, language)
-    return _real_explain(result, language)
+    return call_with_fallback(
+        lambda: _real_explain(result, language),
+        lambda: _mock_explain(result, language),
+    )

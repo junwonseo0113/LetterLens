@@ -1,11 +1,14 @@
 """OCI Document Understanding + GenAI calls, with an offline MOCK_MODE.
 
-MOCK_MODE is the default and the only path exercised by the test suite --
-the demo must run with no OCI credentials. Set MOCK_MODE=false (and the
-OCI_* env vars) to use the real services. The real-mode functions follow
-the OCI Python SDK's documented shapes but are unverified against a live
-tenancy -- treat them as a skeleton to wire up with real OCI credentials,
-not a tested path.
+MOCK_MODE=true is the default and the only path exercised by the test
+suite -- zero network calls, fully deterministic. When MOCK_MODE=false,
+every call below attempts real OCI first; mock is only ever reached as a
+fallback if that fails (see app.trace.call_with_fallback), and that
+fallback is recorded on the request's trace so the UI can show it was
+used, not hide it. The real-mode functions follow the OCI Python SDK's
+documented shapes but are unverified against a live tenancy -- treat
+them as a skeleton to wire up with real OCI credentials, not a tested
+path.
 
 The LLM is only ever asked to classify, extract, or explain -- never to
 decide eligibility. See app/rules/engine.py for the decision logic.
@@ -19,12 +22,9 @@ from dataclasses import dataclass
 
 from app.number_guard import assert_numbers_preserved
 from app.oci_genai import genai_chat, oci_config
+from app.trace import call_with_fallback
 
 from .schemas import SCHEMA_BY_TYPE, LetterType
-
-
-def _mock_mode() -> bool:
-    return os.getenv("MOCK_MODE", "true").lower() not in ("0", "false", "no")
 
 
 @dataclass
@@ -231,35 +231,35 @@ def _real_explain(letter_type: LetterType, fields: dict, language: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Public dispatch -- callers never branch on MOCK_MODE themselves.
+# Public dispatch -- callers never branch on MOCK_MODE themselves. Real OCI
+# is attempted whenever MOCK_MODE=false; mock is only ever reached as the
+# deliberate default (MOCK_MODE=true) or as a fallback when real fails.
 # ---------------------------------------------------------------------------
 
 
 def ocr_document(image_bytes: bytes, filename: str) -> OcrResult:
     """OCI Document Understanding: OCR + key-value extraction."""
-    if _mock_mode():
-        return _mock_ocr(filename)
-    return _real_ocr(image_bytes)
+    return call_with_fallback(lambda: _real_ocr(image_bytes), lambda: _mock_ocr(filename))
 
 
 def classify_letter(raw_text: str) -> LetterType:
     """OCI GenAI: classify the letter type from its OCR'd text."""
-    if _mock_mode():
-        return _mock_classify(raw_text)
-    return _real_classify(raw_text)
+    return call_with_fallback(lambda: _real_classify(raw_text), lambda: _mock_classify(raw_text))
 
 
 def extract_fields(
     letter_type: LetterType, raw_text: str, key_values: dict, retry_after_invalid: bool = False
 ) -> dict:
     """OCI GenAI: extract typed fields for the given letter type."""
-    if _mock_mode():
-        return _mock_extract(letter_type, raw_text)
-    return _real_extract(letter_type, raw_text, key_values, retry_after_invalid)
+    return call_with_fallback(
+        lambda: _real_extract(letter_type, raw_text, key_values, retry_after_invalid),
+        lambda: _mock_extract(letter_type, raw_text),
+    )
 
 
 def explain_letter(letter_type: LetterType, fields: dict, language: str) -> str:
     """OCI GenAI: plain-language explanation of this letter in the user's language."""
-    if _mock_mode():
-        return _mock_explain(letter_type, fields, language)
-    return _real_explain(letter_type, fields, language)
+    return call_with_fallback(
+        lambda: _real_explain(letter_type, fields, language),
+        lambda: _mock_explain(letter_type, fields, language),
+    )

@@ -10,16 +10,12 @@ the English draft and its translation.
 from __future__ import annotations
 
 import json
-import os
 
 from app.number_guard import assert_numbers_preserved
 from app.oci_genai import genai_chat
+from app.trace import call_with_fallback
 
 from .schemas import DisputeLetter, FlaggedLineItem
-
-
-def _mock_mode() -> bool:
-    return os.getenv("MOCK_MODE", "true").lower() not in ("0", "false", "no")
 
 
 def _mock_english_letter(provider: str, flagged_line_items: list[FlaggedLineItem]) -> str:
@@ -70,10 +66,12 @@ def _real_translate(english: str, language: str) -> str:
 
 
 def draft_dispute_letter(provider: str, flagged_line_items: list[FlaggedLineItem], language: str) -> DisputeLetter:
-    if _mock_mode():
-        english = _mock_english_letter(provider, flagged_line_items)
-        translated = _mock_translate(english, language)
-    else:
-        english = _real_english_letter(provider, flagged_line_items)
-        translated = _real_translate(english, language)
+    english = call_with_fallback(
+        lambda: _real_english_letter(provider, flagged_line_items),
+        lambda: _mock_english_letter(provider, flagged_line_items),
+    )
+    translated = call_with_fallback(
+        lambda: _real_translate(english, language),
+        lambda: _mock_translate(english, language),
+    )
     return DisputeLetter(english=english, translated=translated, language=language)
