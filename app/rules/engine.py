@@ -39,6 +39,13 @@ class Profile:
     nyc_resident: bool = True
     age: int = 0
     married: bool = False
+    # Verified 2026-10-17 against the Medicare Rights Center's 2026 NY MSP
+    # training deck: income is combined and couple limits apply only when
+    # "married and living together." A married applicant living apart from
+    # their spouse is budgeted as an individual using single limits.
+    # Defaults to True so existing married=True profiles behave exactly as
+    # before -- this field only matters when explicitly set to False.
+    living_with_spouse: bool = True
 
     has_medicare: bool = False
     on_medicaid: bool = False
@@ -80,6 +87,13 @@ def _near_limit(value: float, limit_value: float, pct: float = NEAR_LIMIT_PCT) -
     return limit_value * (1 - pct) <= value <= limit_value
 
 
+def _counts_as_couple(profile: Profile) -> bool:
+    """Whether spouse income is combined and couple limits apply. Married
+    alone isn't enough -- a couple living apart is budgeted as two
+    individuals, each against single limits."""
+    return profile.married and profile.living_with_spouse
+
+
 def _gross_ss_income(profile: Profile) -> tuple[float, float, Confidence]:
     confidence = Confidence.DOCUMENTED
     ss_self = profile.ss_gross_monthly
@@ -87,7 +101,7 @@ def _gross_ss_income(profile: Profile) -> tuple[float, float, Confidence]:
         ss_self = estimate_gross_from_deposit(profile.bank_deposit_monthly)
         confidence = Confidence.ESTIMATED
     ss_self = ss_self or 0.0
-    ss_spouse = (profile.ss_gross_monthly_spouse or 0.0) if profile.married else 0.0
+    ss_spouse = (profile.ss_gross_monthly_spouse or 0.0) if _counts_as_couple(profile) else 0.0
     return ss_self, ss_spouse, confidence
 
 
@@ -102,17 +116,18 @@ def _evaluate_msp(
             missing_fields=["has_medicare"],
         )
 
+    is_couple = _counts_as_couple(profile)
     qmb_limit = (
         limits.QMB_INCOME_LIMIT_COUPLE_MONTHLY.value
-        if profile.married
+        if is_couple
         else limits.QMB_INCOME_LIMIT_SINGLE_MONTHLY.value
     )
     qi_limit = (
         limits.QI_INCOME_LIMIT_COUPLE_MONTHLY.value
-        if profile.married
+        if is_couple
         else limits.QI_INCOME_LIMIT_SINGLE_MONTHLY.value
     )
-    household = "couple" if profile.married else "single"
+    household = "couple" if is_couple else "single"
     numbers_used = {
         "countable_income_monthly": round(countable, 2),
         "qmb_limit_monthly": qmb_limit,
@@ -195,14 +210,15 @@ def _evaluate_extra_help(
             warnings=list(msp.warnings),
         )
 
+    is_couple = _counts_as_couple(profile)
     income_limit = (
         limits.EXTRA_HELP_INCOME_LIMIT_COUPLE_ANNUAL.value
-        if profile.married
+        if is_couple
         else limits.EXTRA_HELP_INCOME_LIMIT_SINGLE_ANNUAL.value
     )
     resource_limit = (
         limits.EXTRA_HELP_RESOURCE_LIMIT_COUPLE.value
-        if profile.married
+        if is_couple
         else limits.EXTRA_HELP_RESOURCE_LIMIT_SINGLE.value
     )
     annual_income = countable * 12
@@ -236,7 +252,7 @@ def _evaluate_extra_help(
 def _evaluate_snap(
     profile: Profile, gross_self: float, gross_spouse: float, countable: float, income_confidence: Confidence
 ) -> ProgramResult:
-    household_size = max(profile.household_size, 2 if profile.married else 1)
+    household_size = max(profile.household_size, 2 if _counts_as_couple(profile) else 1)
     fpl_annual = limits.FPL_100_SINGLE_ANNUAL.value + limits.FPL_INCREMENT_PER_ADDITIONAL_PERSON.value * (
         household_size - 1
     )
@@ -245,7 +261,7 @@ def _evaluate_snap(
 
     household_gross_monthly = gross_self + gross_spouse + (
         (profile.earned_income_monthly or 0.0)
-        + ((profile.earned_income_monthly_spouse or 0.0) if profile.married else 0.0)
+        + ((profile.earned_income_monthly_spouse or 0.0) if _counts_as_couple(profile) else 0.0)
     )
 
     # Federal law (7 CFR 273.9; confirmed 2026-10-17 against fns.usda.gov and
@@ -320,9 +336,10 @@ def evaluate(profile: Profile) -> list[ProgramResult]:
             for name in ("MSP", "Extra Help", "SNAP")
         ]
 
+    is_couple = _counts_as_couple(profile)
     ss_self, ss_spouse, income_confidence = _gross_ss_income(profile)
     earned_self = profile.earned_income_monthly or 0.0
-    earned_spouse = (profile.earned_income_monthly_spouse or 0.0) if profile.married else 0.0
+    earned_spouse = (profile.earned_income_monthly_spouse or 0.0) if is_couple else 0.0
 
     countable = countable_income_msp(
         unearned_self=ss_self,
@@ -331,7 +348,7 @@ def evaluate(profile: Profile) -> list[ProgramResult]:
         earned_spouse=earned_spouse,
         medigap_self=profile.medigap_premium_monthly,
         medigap_spouse=profile.medigap_premium_monthly_spouse,
-        married=profile.married,
+        married=is_couple,
     )
 
     msp = _evaluate_msp(profile, countable, income_confidence)

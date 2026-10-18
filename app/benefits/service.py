@@ -21,6 +21,7 @@ def profile_record_to_profile(record: ProfileRecord) -> Profile:
         nyc_resident=record.nyc_resident,
         age=record.age,
         married=record.married,
+        living_with_spouse=record.living_with_spouse,
         has_medicare=record.has_medicare,
         on_medicaid=record.on_medicaid,
         on_ssi=record.on_ssi,

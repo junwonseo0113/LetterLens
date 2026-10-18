@@ -78,6 +78,41 @@ def test_e_married_couple_uses_couple_limits():
     assert msp.numbers_used["countable_income_monthly"] == 2380.0
 
 
+def test_married_living_separately_uses_single_limits_not_couple():
+    # Verified against the Medicare Rights Center's 2026 NY MSP training
+    # deck: income is combined and couple limits apply only when "married
+    # and living together" -- living apart means each spouse is budgeted
+    # as an individual. Same two incomes, opposite outcomes depending on
+    # living_with_spouse.
+    living_together = Profile(
+        age=72,
+        married=True,
+        living_with_spouse=True,
+        has_medicare=True,
+        ss_gross_monthly=1700,
+        ss_gross_monthly_spouse=3000,
+    )
+    living_apart = Profile(
+        age=72,
+        married=True,
+        living_with_spouse=False,
+        has_medicare=True,
+        ss_gross_monthly=1700,
+        ss_gross_monthly_spouse=3000,
+    )
+
+    together_result = _by_program(evaluate(living_together), "MSP")
+    apart_result = _by_program(evaluate(living_apart), "QMB")
+
+    # Combined income (1700+3000-20=4680) blows past even the couple QI
+    # limit (3355) -> not_now.
+    assert together_result.status == Status.NOT_NOW
+    # Applicant's own income alone (1700-20=1680) qualifies for QMB under
+    # the single limit (1836) -- spouse's income is correctly excluded.
+    assert apart_result.status == Status.LIKELY
+    assert apart_result.numbers_used["countable_income_monthly"] == 1680.0
+
+
 def test_f_ssdi_disability_no_work_warning():
     profile = Profile(
         age=62,

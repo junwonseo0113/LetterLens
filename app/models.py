@@ -21,6 +21,9 @@ class ProfileRecord(SQLModel, table=True):
     nyc_resident: bool = True
     age: int = 0
     married: bool = False
+    # Only relevant when married=True: spouse income/limits combine only
+    # if living together (verified against the 2026 NY MSP training deck).
+    living_with_spouse: bool = True
     has_medicare: bool = False
     on_medicaid: bool = False
     on_ssi: bool = False
