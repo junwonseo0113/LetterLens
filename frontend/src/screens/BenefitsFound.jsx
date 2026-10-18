@@ -111,22 +111,26 @@ export default function BenefitsFound() {
                   className="speak-pill"
                   onClick={() => readAloud(b.explanation, speechLang(language))}
                 >
-                  {"\u{1F50A}"} {t(language, "readAloud")}
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M4 9.5v5h4l5 4v-13l-5 4H4z" />
+                    <path d="M16.5 9a4 4 0 010 6" />
+                  </svg>
+                  {t(language, "readAloud")}
                 </button>
 
-                {b.myth_busting_lines?.map((line, i) => (
-                  <p key={i} className="myth-line">
-                    {"\u{1F4A1}"} {line}
-                  </p>
-                ))}
-
                 {b.warnings?.map((w, i) => (
-                  <p key={i} className="warning-line">
-                    {"⚠"} {w}
+                  <p key={`w${i}`} className="benefit-note warn">
+                    {w}
                   </p>
                 ))}
 
-                <details>
+                {b.myth_busting_lines?.map((line, i) => (
+                  <p key={`m${i}`} className="benefit-note tip">
+                    {line}
+                  </p>
+                ))}
+
+                <details className="benefit-why">
                   <summary>
                     {t(language, "why")} / {t(language, "numbersUsed")}
                   </summary>
@@ -145,8 +149,6 @@ export default function BenefitsFound() {
                     {t(language, "confidence")}: {confidenceLabel(language, b.confidence)}
                   </p>
                 </details>
-
-                <p className="disclaimer">{b.disclaimer}</p>
               </div>
             </div>
           ))}
@@ -193,6 +195,14 @@ export default function BenefitsFound() {
           <span className="nav-row-chevron">{"›"}</span>
         </Link>
       </div>
+
+      {/* Every card carries the same "final decision is made by..." line;
+          show each distinct one once instead of repeating it per card. */}
+      {[...new Set(relevant.map((b) => b.disclaimer).filter(Boolean))].map((d) => (
+        <p key={d} className="benefit-footnote">
+          {d}
+        </p>
+      ))}
 
       <TracePanel trace={trace} />
     </Layout>
