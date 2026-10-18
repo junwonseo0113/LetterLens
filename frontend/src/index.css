@@ -154,6 +154,10 @@ body {
   font-size: var(--font-size-base);
   line-height: 1.45;
   -webkit-font-smoothing: antialiased;
+  /* Break Korean at spaces, not mid-word ("신청하/기"). break-word still
+     lets space-less Chinese lines wrap when they would overflow. */
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 
 .app-shell {
@@ -702,6 +706,205 @@ input:focus-visible {
 .warning-line {
   color: var(--color-danger);
   font-weight: 600;
+}
+
+/* --- Benefits screen: tinted cards for eligible programs, compact
+   expandable rows for the rest. Tints match the Home benefit tiles. ---- */
+
+.benefit-stack {
+  gap: 12px;
+}
+
+.benefit-card-v2 {
+  border-radius: 20px;
+  background: var(--color-surface);
+  overflow: hidden;
+}
+
+.benefit-card-v2-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 18px 16px;
+}
+
+.benefit-card-v2.tone-pink .benefit-card-v2-head { background: var(--color-tile-pink); }
+.benefit-card-v2.tone-yellow .benefit-card-v2-head { background: var(--color-tile-yellow); }
+.benefit-card-v2.tone-green .benefit-card-v2-head { background: var(--color-tile-green); }
+.benefit-card-v2.tone-blue .benefit-card-v2-head { background: var(--color-tile-blue); }
+
+.benefit-card-v2-head h2 {
+  margin: 0 0 4px;
+  font-size: var(--font-size-lg);
+  line-height: 1.15;
+}
+
+.benefit-value {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 16px 18px 0;
+}
+
+.benefit-value strong {
+  font-size: var(--font-size-xl);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.benefit-value span {
+  font-size: var(--font-size-xs);
+  color: var(--color-muted);
+}
+
+.benefit-card-v2-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 18px 6px;
+}
+
+.benefit-explanation {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  line-height: 1.55;
+}
+
+.listen-pill {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 999px;
+  background: var(--color-neutral-bg);
+  color: var(--color-ink);
+  font-family: var(--font-ui);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.benefit-note {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  line-height: 1.45;
+}
+
+.benefit-note.tip {
+  background: var(--color-neutral-bg);
+  color: var(--color-ink);
+}
+
+.benefit-note.warn {
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+  font-weight: 600;
+}
+
+/* Native <details> restyled as an iOS disclosure row. */
+.benefit-why summary,
+.benefit-row summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+.benefit-why summary::-webkit-details-marker,
+.benefit-row summary::-webkit-details-marker {
+  display: none;
+}
+
+.benefit-why {
+  border-top: 1px solid var(--color-separator);
+}
+
+.benefit-why summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 48px;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+.benefit-why > p {
+  font-size: var(--font-size-xs);
+  color: var(--color-muted);
+  margin: 0 0 6px;
+}
+
+.benefit-why .benefit-why-confidence {
+  margin: 8px 0 12px;
+}
+
+.benefit-why-chevron,
+.benefit-row-chevron {
+  color: var(--color-muted);
+  font-size: 22px;
+  line-height: 1;
+  transition: transform 0.15s ease;
+}
+
+.benefit-why[open] .benefit-why-chevron,
+.benefit-row[open] .benefit-row-chevron {
+  transform: rotate(90deg);
+}
+
+.benefit-row {
+  border-bottom: 1px solid var(--color-separator);
+}
+
+.benefit-row:last-child {
+  border-bottom: none;
+}
+
+.benefit-row summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+  padding: 10px 16px;
+}
+
+.benefit-row-name {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--font-size-base);
+  font-weight: 700;
+}
+
+.benefit-row summary .status-text {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+}
+
+.benefit-row-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0 16px 6px 64px;
+}
+
+.benefit-footnote {
+  margin: 0 4px;
+  font-size: var(--font-size-xs);
+  color: var(--color-muted);
+  text-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .benefit-why-chevron,
+  .benefit-row-chevron {
+    transition: none;
+  }
 }
 
 table.kv-table {
