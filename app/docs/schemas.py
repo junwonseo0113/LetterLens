@@ -38,6 +38,8 @@ class SsaBenefitLetterFields(BaseModel):
     # When present, lets the app answer the "age" question itself instead
     # of asking -- see app.docs.profile_merge.
     date_of_birth: date | None = None
+    # When present, lets the app answer the "on_ssi" fact without asking.
+    receives_ssi: bool | None = None
 
 
 class RecurringDeposit(BaseModel):
@@ -57,6 +59,12 @@ class BankStatementFields(BaseModel):
     medical_expenses: list[RecurringDeposit] = Field(default_factory=list)
 
 
+class HouseholdMember(BaseModel):
+    name: str
+    age: int | None = None
+    relationship: str = "head_of_household"
+
+
 class HraRenewalNoticeFields(BaseModel):
     program: str
     deadline: date
@@ -66,6 +74,17 @@ class HraRenewalNoticeFields(BaseModel):
     # When present, lets the app answer the "household_size" question
     # itself instead of asking -- see app.docs.profile_merge.
     household_size: int | None = None
+    # A named household-members list, when the notice lists one: if it has
+    # exactly one person, that answers "married and living with spouse"
+    # (= no) without ever asking or stating a marital status directly.
+    household_members: list[HouseholdMember] | None = None
+    # Which programs this case is already open for -- if listed and
+    # Medicaid isn't among them, that answers "on Medicaid" (= no).
+    programs_on_case: list[str] | None = None
+    # Some notices state this outright (it's the eligibility condition for
+    # the simplified senior/disabled form) -- when present, answers
+    # "earned_income_monthly" (= 0) without asking or needing a pay stub.
+    household_has_earned_income: bool | None = None
     simplified_form_eligible: bool = False
     simplified_form_id: str | None = None
     interview_required: str | None = None

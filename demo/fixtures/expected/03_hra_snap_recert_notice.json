@@ -5,6 +5,17 @@
   "deadline": "2026-11-10",
   "certification_end_date": "2026-11-30",
   "household_size": 1,
+  "household_members": [
+    {
+      "name": "MEI-LING CHEN",
+      "age": 74,
+      "relationship": "head_of_household"
+    }
+  ],
+  "programs_on_case": [
+    "SNAP"
+  ],
+  "household_has_earned_income": false,
   "simplified_form_eligible": true,
   "simplified_form_id": "LDSS-5166",
   "interview_required": "telephone",

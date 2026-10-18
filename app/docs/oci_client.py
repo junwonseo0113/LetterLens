@@ -52,7 +52,9 @@ _FIXTURE_TEXT_BY_STEM = {
         "Medicare Part B premium deduction: $202.90.\n"
         "Your net payment is $1,497.00.\n"
         "Date of birth: 1952-03-14.\n"
-        "This change is effective 2025-12-01."
+        "This change is effective 2025-12-01.\n"
+        "Information About Supplemental Security Income Payments: "
+        "You are not currently receiving Supplemental Security Income (SSI)."
     ),
     "02_bank_statement": (
         "Sample Community Bank Monthly Statement\n"
@@ -68,9 +70,13 @@ _FIXTURE_TEXT_BY_STEM = {
         "SNAP Recertification Notice\n"
         "MEI-LING CHEN\n"
         "Household size: 1\n"
+        "Household Members: MEI-LING CHEN, age 74, Head of Household\n"
+        "Programs on this case: SNAP\n"
         "Your SNAP case must be recertified by 2026-11-10.\n"
         "Certification ends 2026-11-30.\n"
-        "Simplified form LDSS-5166 available.\n"
+        "Because everyone in your household is age 60 or older and no one "
+        "has earned income, you may use the Simplified SNAP Application/"
+        "Recertification Form (LDSS-5166).\n"
         "Please submit: proof of income, proof of rent, proof of utilities, "
         "proof of medical expenses, proof of identity."
     ),
@@ -103,6 +109,7 @@ _FIXTURE_EXTRACT_BY_STEM = {
         "recipient_name": "MEI-LING CHEN",
         "recipient_address": "123 SAMPLE AVE APT 4B, FLUSHING NY 11354",
         "date_of_birth": "1952-03-14",
+        "receives_ssi": False,
     },
     "02_bank_statement": {
         "ending_balance": 40000.00,
@@ -117,6 +124,9 @@ _FIXTURE_EXTRACT_BY_STEM = {
         "notice_date": "2026-10-05",
         "certification_end_date": "2026-11-30",
         "household_size": 1,
+        "household_members": [{"name": "MEI-LING CHEN", "age": 74, "relationship": "head_of_household"}],
+        "programs_on_case": ["SNAP"],
+        "household_has_earned_income": False,
         "simplified_form_eligible": True,
         "simplified_form_id": "LDSS-5166",
         "interview_required": "telephone",

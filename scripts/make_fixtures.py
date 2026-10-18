@@ -289,6 +289,8 @@ def make_fixture_1() -> None:
             "beginning March 2017.",
         ]
     )
+    l.section_header("Information About Supplemental Security Income Payments")
+    l.body(["You are not currently receiving Supplemental Security Income (SSI)."])
     l.body(["Social Security Number: XXX-XX-0000 (SAMPLE)"], font_size=17, color=MUTED)
     l.finish(name)
 
@@ -304,6 +306,7 @@ def make_fixture_1() -> None:
             "date_of_birth": "1952-03-14",
             "has_medicare_part_a": True,
             "has_medicare_part_b": True,
+            "receives_ssi": False,
             "recipient_name": "MEI-LING CHEN",
             "recipient_address": "123 SAMPLE AVE APT 4B, FLUSHING NY 11354",
         },
@@ -389,6 +392,13 @@ def make_fixture_3() -> None:
             ("Household Size", "1"),
         ]
     )
+    l.section_header("Household Members")
+    l.table(
+        ["Name", "Age", "Relationship"],
+        [400, 130, 330],
+        [["MEI-LING CHEN", "74", "Head of Household"]],
+    )
+    l.body(["Programs on this case: SNAP"])
     l.body(["Your current SNAP certification period ends on NOVEMBER 30, 2026."])
     l.draw.text((MARGIN, l.y), "Due: NOVEMBER 10, 2026", font=_font(23, bold=True), fill=(150, 0, 0))
     l.y += 40
@@ -427,6 +437,9 @@ def make_fixture_3() -> None:
             "deadline": "2026-11-10",
             "certification_end_date": "2026-11-30",
             "household_size": 1,
+            "household_members": [{"name": "MEI-LING CHEN", "age": 74, "relationship": "head_of_household"}],
+            "programs_on_case": ["SNAP"],
+            "household_has_earned_income": False,
             "simplified_form_eligible": True,
             "simplified_form_id": "LDSS-5166",
             "interview_required": "telephone",
