@@ -603,8 +603,18 @@ pre.letter-text {
     display: none !important;
   }
 
+  /* Browsers drop background colors on print by default, so without this
+     the .card boxes and colored badges vanish, leaving headings floating
+     on bare paper with no visible container. */
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Keep the mobile-sized type (36px h1, 26px h2) from looking oversized
+     and unbalanced once the layout is no longer capped at phone width. */
   .app-shell {
-    max-width: 100%;
+    max-width: 680px;
   }
 
   body {
