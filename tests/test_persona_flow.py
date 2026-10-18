@@ -61,6 +61,28 @@ def test_find_qmb_and_extra_help_from_ssa_and_bank_letters():
     assert any("存款" in line for line in results["QMB"]["myth_busting_lines"])
 
 
+def test_find_zero_questions_after_ssa_bank_and_hra_letters():
+    """The core FIND demo flow: upload the SSA letter, bank statement, and
+    HRA notice -- no manual answers at all -- and needed_questions() is
+    empty. The HRA notice's single-person household_members list answers
+    "married" (lives alone), its programs_on_case answers "on Medicaid"
+    (not listed), and its "no one has earned income" statement answers
+    earned_income_monthly -- all without asking."""
+    headers = auth_headers("meiling_zero_q")
+    _upload("01_ssa_benefit_letter.png", headers)
+    _upload("02_bank_statement.png", headers)
+    _upload("03_hra_snap_recert_notice.png", headers)
+
+    response = client.get("/benefits", params={"language": "zh"}, headers=headers)
+    body = response.json()
+    assert body["questions"] == []
+
+    results = {r["program"]: r for r in body["results"]}
+    assert results["QMB"]["status"] == "likely"
+    assert results["Extra Help"]["status"] == "likely"
+    assert results["SNAP"]["status"] == "already_enrolled"
+
+
 def test_find_age_is_read_from_the_ssa_letter_not_asked():
     headers = auth_headers("meiling_age")
     body = _upload("01_ssa_benefit_letter.png", headers)

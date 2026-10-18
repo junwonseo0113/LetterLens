@@ -36,8 +36,9 @@ def test_new_user_gets_more_information_needed_not_a_guess():
     # Nothing known yet: unknown income is not $0, unknown Medicare is not "no".
     results, body = _by_program("nobody")
     assert {r["status"] for r in results.values()} == {"missing_info"}
-    assert body["questions"][0] == "has_medicare"
-    assert "earned_income_monthly" in body["questions"]
+    # Many facts are genuinely unknown here, but the UI never asks more
+    # than MAX_QUESTIONS (2) at once -- see app.benefits.service.needed_questions.
+    assert body["questions"] == ["has_medicare", "ss_gross_monthly"]
     assert all(r["monthly_value"] == 0 for r in results.values())
 
 
@@ -144,3 +145,15 @@ def test_unknown_savings_are_not_shown_as_zero():
     # Under 200% of the poverty line savings don't matter, so they aren't
     # listed as "numbers used" even once known.
     assert "savings" not in results["SNAP"]["numbers_used"]
+
+
+def test_questions_are_never_more_than_two_even_for_a_blank_profile():
+    """A brand new user with zero letters has 5 genuinely unknown facts
+    (has_medicare, ss_gross_monthly, earned_income_monthly, married,
+    household_size) -- the UI should never be asked to show more than 2
+    at once. See app.benefits.service.MAX_QUESTIONS."""
+    from app.benefits.service import MAX_QUESTIONS
+
+    _, body = _by_program("blank_profile_user")
+    assert len(body["questions"]) <= MAX_QUESTIONS
+    assert body["questions"] == ["has_medicare", "ss_gross_monthly"]

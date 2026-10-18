@@ -69,6 +69,20 @@ def profile_record_to_profile(record: ProfileRecord) -> Profile:
     )
 
 
+# A result only lists a fact in missing_fields when the rules engine
+# couldn't decide without it -- i.e. answering it would change that
+# program's status from missing_info to a real decision. So the set of
+# facts across all results already satisfies "missing AND would change a
+# result" by construction; this just dedupes, orders, and caps it so the
+# UI never has to ask more than 2 things at once.
+MAX_QUESTIONS = 2
+
+
+def needed_questions(results: list) -> list[str]:
+    wanted = {f for r in results for f in r.missing_fields}
+    return [f for f in PROFILE_FACTS if f in wanted][:MAX_QUESTIONS]
+
+
 def uses_sample_data(session: Session, record: ProfileRecord) -> bool:
     """True if any value behind the results came from a sample letter.
     Letters saved before is_sample existed were all MOCK_MODE samples
@@ -104,11 +118,10 @@ def get_benefits(session: Session, user_id: str, language: str) -> BenefitsResul
     with trace.step("Explained each result", f"OCI Generative AI{mock_suffix()}"):
         explained = explain_results(results, profile, language)
 
-    wanted = {f for r in results for f in r.missing_fields}
     return BenefitsResult(
         results=explained,
         trace=trace_to_out(trace),
-        questions=[f for f in PROFILE_FACTS if f in wanted],
+        questions=needed_questions(results),
         uses_sample_data=uses_sample_data(session, record),
     )
 
