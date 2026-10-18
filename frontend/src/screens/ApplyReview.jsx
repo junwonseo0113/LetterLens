@@ -7,7 +7,7 @@ import { useAuth } from "../context/useAuth";
 import { useLanguage } from "../context/useLanguage";
 import { t } from "../strings";
 import { addDocument, answerField, errorText, startApplication, submitApplication } from "../api";
-import { displayValue, label } from "../applicationFields";
+import { displayValue, documentLabel, label } from "../applicationFields";
 
 const EDITABLE = new Set(["draft", "info_requested"]);
 const DOC_STATUS_KEY = {
@@ -79,7 +79,7 @@ function DocumentRow({ doc, onPhoto }) {
   return (
     <div className="review-row">
       <span style={{ flex: 1 }}>
-        {ok ? "✅" : "⬜"} {language === "zh" ? doc.label_zh : doc.label_en}
+        {ok ? "✅" : "⬜"} {documentLabel(doc, language)}
       </span>
       {doc.status === "missing" && doc.key !== "signed_application" ? (
         <>

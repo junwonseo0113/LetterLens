@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import Layout from "../components/Layout";
 import { useAuth } from "../context/useAuth";
 import { useLanguage } from "../context/useLanguage";
-import { t } from "../strings";
+import { documentText, numberLabel, t } from "../strings";
+import { documentLabel } from "../applicationFields";
 import { fetchBenefits, fetchMspChecklist, fetchReminders } from "../api";
 const MSP_PROGRAMS = new Set(["QMB", "QI", "MSP"]);
 
@@ -35,7 +36,7 @@ export default function ApplicationPack() {
             <ul style={{ listStyle: "none", paddingLeft: 0, margin: 0 }}>
               {mspChecklist.items.map((item) => (
                 <li key={item.key} style={{ padding: "4px 0" }}>
-                  {item.status === "already_have" ? "✅" : "⬜"} {language === "zh" ? item.label_zh : language === "ko" ? item.label_ko : item.label_en}
+                  {item.status === "already_have" ? "✅" : "⬜"} {documentLabel(item, language)}
                 </li>
               ))}
             </ul>
@@ -63,7 +64,7 @@ export default function ApplicationPack() {
               {(r.packet?.items ?? r.checklist.map((item) => ({ item, satisfied: false }))).map(
                 (packetItem, i) => (
                   <li key={i}>
-                    {packetItem.satisfied ? "✅" : "⬜"} {packetItem.item}
+                    {packetItem.satisfied ? "✅" : "⬜"} {documentText(language, packetItem.item)}
                   </li>
                 ),
               )}
@@ -84,7 +85,7 @@ export default function ApplicationPack() {
               <tbody>
                 {Object.entries(b.numbers_used).map(([key, value]) => (
                   <tr key={key}>
-                    <td>{key}</td>
+                    <td>{numberLabel(language, key)}</td>
                     <td>{String(value)}</td>
                   </tr>
                 ))}

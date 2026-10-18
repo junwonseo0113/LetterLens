@@ -4,17 +4,8 @@ import BigButton from "../components/BigButton";
 import IconBadge from "../components/IconBadge";
 import { useAuth } from "../context/useAuth";
 import { useLanguage } from "../context/useLanguage";
-import { t } from "../strings";
+import { letterTypeLabel, t } from "../strings";
 import { fetchLetters, fetchOnQmb, fetchReminders, setOnQmb, uploadLetter } from "../api";
-
-const LETTER_TYPE_LABEL = {
-  ssa_benefit_letter: "SSA",
-  bank_statement: "Bank",
-  hra_renewal_notice: "HRA",
-  medical_bill: "Medical bill",
-  medicare_notice: "Medicare",
-  other: "Letter",
-};
 
 export default function Home() {
   const { language } = useLanguage();
@@ -159,7 +150,7 @@ export default function Home() {
             {letters.map((l) => (
               <div key={l.id} className="letter-list-item">
                 <IconBadge kind={l.letter_type} size={36} />
-                <span style={{ flex: 1 }}>{LETTER_TYPE_LABEL[l.letter_type] || l.letter_type}</span>
+                <span style={{ flex: 1 }}>{letterTypeLabel(language, l.letter_type)}</span>
                 <span style={{ color: "var(--color-muted)" }}>
                   {new Date(l.created_at).toLocaleDateString()}
                 </span>

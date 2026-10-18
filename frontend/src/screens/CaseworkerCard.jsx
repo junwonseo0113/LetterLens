@@ -3,7 +3,7 @@ import BigButton from "../components/BigButton";
 import Layout from "../components/Layout";
 import { useAuth } from "../context/useAuth";
 import { useLanguage } from "../context/useLanguage";
-import { STATUS_KEY, UI_STRINGS, t } from "../strings";
+import { STATUS_KEY, UI_STRINGS, numberLabel, t } from "../strings";
 import { fetchBenefits } from "../api";
 
 export default function CaseworkerCard() {
@@ -33,13 +33,21 @@ export default function CaseworkerCard() {
             {b.program} &mdash; {UI_STRINGS.en[STATUS_KEY[b.status]]} / {t(language, STATUS_KEY[b.status])}
           </h2>
           <p>
-            <em>EN:</em> {b.rule_applied}
+            <em>EN:</em> {b.rule_applied_en}
           </p>
+          {language && language !== "en" && (
+            <p>
+              <em>{language.toUpperCase()}:</em> {b.rule_applied}
+            </p>
+          )}
           <table className="kv-table">
             <tbody>
               {Object.entries(b.numbers_used).map(([key, value]) => (
                 <tr key={key}>
-                  <td>{key}</td>
+                  <td>
+                    {numberLabel("en", key)}
+                    {language && language !== "en" && ` / ${numberLabel(language, key)}`}
+                  </td>
                   <td>{String(value)}</td>
                 </tr>
               ))}

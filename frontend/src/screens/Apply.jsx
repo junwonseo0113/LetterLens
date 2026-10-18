@@ -94,7 +94,7 @@ export default function Apply() {
           <button
             type="button"
             className="link-button"
-            aria-label="Read aloud"
+            aria-label={t(language, "readAloud")}
             onClick={() => readAloud(question(current, language), lang)}
           >
             {"\u{1F50A}"}

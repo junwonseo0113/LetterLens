@@ -33,9 +33,22 @@ Demo persona: Chen Yu-lan (陈玉兰), 74, Flushing, Queens, Mandarin speaker.
   accepts third-party filings; every application response carries
   `simulated: true` and the UI shows a "Demo" note. A real launch would
   file through an authorized-representative partner.
-- **Sign in before anything personal.** A phone one-time code gates every
-  screen that shows letters or builds an application. With no SMS
-  provider configured, the code is shown on screen (`DEMO_SHOW_OTP=true`).
+- **Sign in before anything personal.** A phone one-time code is required
+  for every endpoint that reads or writes someone's letters, benefits,
+  reminders or applications -- the user always comes from the sign-in
+  token, never from a `user_id` parameter. Sessions last 30 days and are
+  revoked on sign-out; code requests are limited to 5 per phone per 15
+  minutes. With no SMS provider configured, the code is shown on screen
+  (`DEMO_SHOW_OTP=true`), so **anyone can sign in as any number in demo
+  mode** -- turn that off once a real SMS sender is wired into
+  `app/auth/service.py` `send_code()`.
+- **English and Chinese everywhere.** Every message the user sees has an
+  English and a Chinese version, including the backend's rules,
+  warnings, to-do items and bill-check reasons (written side by side in
+  `app/rules/engine.py` from the same numbers -- a test checks every
+  dollar amount matches). The UI is also fully translated into Korean,
+  Spanish and Russian; backend-generated text in those languages is
+  English in `MOCK_MODE` and translated by OCI GenAI in real mode.
 - **Every FIND result shows its work**: numbers used, rule applied, a
   confidence label, and "Final decision is made by NY State / HRA / SSA."
 - **MOCK_MODE=true by default.** The entire stack — OCR, classification,
@@ -192,7 +205,7 @@ app/
   db.py         SQLite engine/session (DATABASE_URL-configurable)
   number_guard.py / oci_genai.py   shared helpers used across the GenAI call sites
   main.py       FastAPI app, CORS, router wiring
-tests/          82 tests: rules engine (A-J), document pipeline, explain,
+tests/          97 tests: rules engine (A-J), document pipeline, explain,
                 keep/protect, benefits endpoint, sign-in + applications
 demo/           M7 -- fixtures, seed script, full persona walkthrough script
 frontend/       M6 -- React + Vite UI: language, sign-in, letters, benefits,
@@ -211,6 +224,10 @@ uvicorn app.main:app --reload --port 8000
 ```
 
 ### Frontend
+
+Needs **Node 22.12 or newer** (`.nvmrc` says 22). Older Node fails with a
+confusing "Cannot find native binding" error from rolldown; with
+`engine-strict` on, npm now says the real problem.
 
 ```bash
 cd frontend
@@ -249,7 +266,7 @@ Never commit `.env` or `.env.local` — both are gitignored.
 ## Running the tests
 
 ```bash
-python3 -m pytest -q          # 82 tests: pure functions + FastAPI TestClient, no servers needed, MOCK_MODE only
+python3 -m pytest -q          # 97 tests: pure functions + FastAPI TestClient, no servers needed, MOCK_MODE only
 cd frontend && npm run build && npm run lint
 ```
 
@@ -296,11 +313,13 @@ Suggested order (persona: Chen Yu-lan, 74, Flushing, Queens):
 7. Open `/caseworker` in a second tab -- approve, or request info and
    watch the user's status change
 
-**Known gap:** no letter type currently extracts age or current QMB
-enrollment status -- nothing in the 4 extraction schemas captures either
-fact. `demo/run_demo.py` sets both directly in the database with an inline
-comment explaining why; a real intake flow or a QMB-card letter type would
-replace that.
+**Known gap:** no letter type extracts age or current QMB enrollment.
+Age (plus marriage, household size and work income) now comes from the
+application interview and feeds the eligibility check, but only once the
+user has answered it -- so the benefits shown before applying assume no
+age. Current QMB enrollment is still the manual toggle on Home.
+`demo/run_demo.py` sets both directly so FIND reflects the persona from
+the start.
 
 ## Before presenting: verify the numbers
 
@@ -313,11 +332,19 @@ against the linked SSA / NY State page before presenting this to judges.**
 
 ## Git history
 
-Each milestone was built and tested on its own branch, then
-fast-forward-merged into `main`:
+`main` still holds only the original OCI starter-kit Terraform; all
+application code lives on the **`letterlens`** branch, which is the
+branch to work from and push to. Each milestone was built on its own
+branch and then fast-forwarded into `letterlens`:
 
 `m1-rules-engine` -> `m2-tests` -> `m3-document-pipeline` ->
 `m4-explanation-layer` -> `m5-keep-protect` -> `m7-demo-fixtures` ->
-`m6-frontend` -> `docs-readme` -> `fix-limits-verification` ->
-`packet-readiness` -> `ios-pwa` -> `qmb-toggle` -> `demo-script` ->
-`design-refresh` -> `oci-trace`
+`m6-frontend` -> `packet-readiness` -> `ios-pwa` -> `qmb-toggle` ->
+`demo-script` -> `design-refresh` -> `oci-trace` -> `oci-readme-docs` ->
+`tab-bar-icons` -> `realistic-fixtures` -> `oci-fallback-badge` ->
+`msp-slide-deck-crosscheck` -> `msp-checklist` -> sign-in + APPLY
+(review/sign/submit, caseworker queue, Chinese persona) -> auth on all
+personal endpoints + full English/Chinese coverage
+
+The other remote branches are those milestone snapshots; they are not
+kept up to date.

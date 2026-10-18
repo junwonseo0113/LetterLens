@@ -5,7 +5,7 @@ import Layout from "../components/Layout";
 import TracePanel from "../components/TracePanel";
 import { useAuth } from "../context/useAuth";
 import { useLanguage } from "../context/useLanguage";
-import { STATUS_KEY, t } from "../strings";
+import { STATUS_KEY, confidenceLabel, numberLabel, t } from "../strings";
 import { formatMoney } from "../format";
 import { fetchBenefits } from "../api";
 
@@ -75,14 +75,14 @@ export default function BenefitsFound() {
                 <tbody>
                   {Object.entries(b.numbers_used).map(([key, value]) => (
                     <tr key={key}>
-                      <td>{key}</td>
+                      <td>{numberLabel(language, key)}</td>
                       <td>{String(value)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
               <p>
-                {t(language, "confidence")}: {b.confidence}
+                {t(language, "confidence")}: {confidenceLabel(language, b.confidence)}
               </p>
             </details>
 

@@ -130,9 +130,9 @@ letter in English and Chinese side by side.
   `send_code()`.
 - **"What's still missing?"** → Be honest: SMS delivery for the sign-in
   code, real agency filing, caseworker accounts (one shared key today),
-  no document type captures age or current QMB enrollment (hence the
-  manual toggle), SNAP's asset-test nuance for non-elderly households is
-  simplified. All flagged inline in the code, not hidden.
+  no letter type captures current QMB enrollment (hence the manual
+  toggle; age now comes from the application interview), SNAP's
+  asset-test nuance for non-elderly households is simplified. All flagged inline in the code, not hidden.
 
 ## Time budget
 

@@ -6,6 +6,7 @@ import { useAuth } from "../context/useAuth";
 import { useLanguage } from "../context/useLanguage";
 import { t } from "../strings";
 import { errorText, startApplication } from "../api";
+import { documentLabel } from "../applicationFields";
 
 function Timeline({ steps }) {
   return (
@@ -89,7 +90,7 @@ export default function ApplyStatus() {
               .filter((d) => application.review_reason.includes(d.key))
               .map((d) => (
                 <li key={d.key}>
-                  {"⬜"} {language === "zh" ? d.label_zh : d.label_en}
+                  {"⬜"} {documentLabel(d, language)}
                 </li>
               ))}
           </ul>

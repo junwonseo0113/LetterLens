@@ -33,7 +33,7 @@ export default function BillCheckResult() {
                 <li key={i}>
                   {item.description} &mdash; ${item.amount.toFixed(2)} ({item.category})
                   <br />
-                  <small>{item.reason}</small>
+                  <small>{language === "zh" && item.reason_zh ? item.reason_zh : item.reason}</small>
                 </li>
               ))}
             </ul>
