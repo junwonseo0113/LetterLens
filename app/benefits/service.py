@@ -8,10 +8,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from app.explain import ExplainedProgramResult, explain_results
-from app.models import ProfileRecord
+from app.models import LetterRecord, ProfileRecord
 from app.rules.engine import Profile, evaluate
 from app.trace import Trace, mock_suffix, trace_to_out, TraceStepOut
 
@@ -48,6 +48,20 @@ class BenefitsResult:
 
 def get_benefits(session: Session, user_id: str, language: str) -> BenefitsResult:
     trace = Trace()
+
+    # A never-set income field (None -- no letter has reported it yet) and
+    # a confirmed $0 both collapse to 0.0 inside the rules engine (`or
+    # 0.0` throughout engine.py), so a profile with zero letters is
+    # indistinguishable from "verified zero income" -- which trivially
+    # clears every program's income ceiling and would show a brand new
+    # user "likely qualifies for SNAP" before they've uploaded anything.
+    # Skip evaluation entirely until there's at least one real letter.
+    has_letters = session.exec(select(LetterRecord).where(LetterRecord.user_id == user_id)).first() is not None
+    if not has_letters:
+        with trace.step("Checked eligibility", "Rules engine (no AI)"):
+            pass
+        return BenefitsResult(results=[], trace=trace_to_out(trace))
+
     record = session.get(ProfileRecord, user_id)
     profile = profile_record_to_profile(record) if record else Profile()
 

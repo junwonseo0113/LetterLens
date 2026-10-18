@@ -28,27 +28,16 @@ def _upload(filename: str, language: str = "en", user_id: str = "demo"):
     )
 
 
-def test_benefits_for_unknown_user_returns_defaults():
+def test_benefits_for_user_with_no_letters_returns_no_results():
+    # A never-set income field and a confirmed $0 both collapse to 0.0
+    # inside the rules engine, so without this guard a brand new user
+    # would see "SNAP: likely qualify" before uploading anything --
+    # indistinguishable from a verified zero-income household. Until
+    # there's at least one letter, there's nothing to evaluate.
     response = client.get("/benefits", headers=auth_headers("nobody"))
     assert response.status_code == 200
     body = response.json()
-    results = body["results"]
-
-    programs = {b["program"] for b in results}
-    assert programs == {"MSP", "Extra Help", "SNAP"}
-
-    msp = next(b for b in results if b["program"] == "MSP")
-    extra_help = next(b for b in results if b["program"] == "Extra Help")
-    snap = next(b for b in results if b["program"] == "SNAP")
-
-    # No Medicare on file -> MSP/Extra Help can't apply yet.
-    assert msp["status"] == "not_now"
-    assert extra_help["status"] == "not_now"
-    # Zero income household is correctly SNAP-likely (gross $0 <= 200% FPL).
-    assert snap["status"] == "likely"
-
-    for item in results:
-        assert item["disclaimer"] == "Final decision is made by NY State / HRA / SSA, not this app."
+    assert body["results"] == []
 
 
 def test_benefits_reflects_uploaded_ssa_letter():
