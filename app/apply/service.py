@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import secrets
 import string
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 from pydantic import BaseModel
 from sqlalchemy.exc import IntegrityError
@@ -258,6 +258,32 @@ def _require_editable(app: ApplicationRecord) -> None:
 # --- write -------------------------------------------------------------------------
 
 
+def _age_on(born: date, today: date) -> int:
+    return today.year - born.year - ((today.month, today.day) < (born.month, born.day))
+
+
+# What each application answer means for the eligibility profile. The
+# rules engine reads ProfileRecord, so answers given here change the
+# benefits results the next time they're checked.
+_PROFILE_UPDATES = {
+    "date_of_birth": lambda p, v: setattr(p, "age", _age_on(date.fromisoformat(v), date.today())),
+    # The question asks "married AND living with your spouse".
+    "married": lambda p, v: (setattr(p, "married", v == "yes"), setattr(p, "living_with_spouse", v == "yes")),
+    "household_size": lambda p, v: setattr(p, "household_size", max(1, int(float(v)))),
+    "monthly_social_security": lambda p, v: setattr(p, "ss_gross_monthly", float(v)),
+    "monthly_work_income": lambda p, v: setattr(p, "earned_income_monthly", float(v)),
+}
+
+
+def _update_profile(session: Session, user_id: str, key: str, value: str) -> None:
+    update = _PROFILE_UPDATES.get(key)
+    if update is None:
+        return
+    profile = session.get(ProfileRecord, user_id) or ProfileRecord(user_id=user_id)
+    update(profile, value)
+    session.add(profile)
+
+
 def answer_field(session: Session, app: ApplicationRecord, key: str, raw: str) -> ApplicationRecord:
     _require_editable(app)
     spec = field_spec(app.program, key)
@@ -270,6 +296,7 @@ def answer_field(session: Session, app: ApplicationRecord, key: str, raw: str) -
     fields = dict(app.fields or {})
     fields[key] = {"value": value, "source": "you"}
     app.fields = fields
+    _update_profile(session, app.user_id, key, value)
     _save(session, app)
     return app
 

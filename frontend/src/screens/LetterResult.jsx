@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import BigButton from "../components/BigButton";
 import Layout from "../components/Layout";
 import TracePanel from "../components/TracePanel";
-import { useLanguage } from "../context/LanguageContext";
+import { useLanguage } from "../context/useLanguage";
 import { t } from "../strings";
 
 export default function LetterResult() {

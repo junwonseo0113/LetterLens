@@ -3,6 +3,8 @@ from datetime import date, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
+
+from tests.conftest import auth_headers
 from sqlmodel import Session, SQLModel
 
 from app.db import engine
@@ -26,7 +28,8 @@ def _upload(filename: str, language: str = "en", user_id: str = "demo"):
     return client.post(
         "/letters",
         files={"file": (filename, io.BytesIO(b"fake-image-bytes"), "image/jpeg")},
-        data={"language": language, "user_id": user_id},
+        data={"language": language},
+        headers=auth_headers(user_id),
     )
 
 
@@ -97,7 +100,7 @@ def test_hra_upload_creates_reminder_via_pipeline():
     assert body["reminder"]["deadline"] == "2026-11-15"
     assert body["reminder"]["checklist"] == ["proof of income", "proof of residence", "ID"]
 
-    listed = client.get("/reminders", params={"user_id": "demo"}).json()
+    listed = client.get("/reminders", headers=auth_headers("demo")).json()
     assert len(listed) == 1
     assert listed[0]["program"] == "SNAP"
 
@@ -197,7 +200,7 @@ def test_packet_readiness_via_letters_endpoint():
     _upload("ssa_sample.jpg")
     _upload("hra_sample.jpg")
 
-    listed = client.get("/reminders", params={"user_id": "demo"}).json()
+    listed = client.get("/reminders", headers=auth_headers("demo")).json()
     packet = listed[0]["packet"]
 
     assert packet["satisfied_count"] == 1
@@ -211,7 +214,7 @@ def test_packet_readiness_via_letters_endpoint():
 
 
 def test_msp_checklist_no_letters_everything_missing():
-    response = client.get("/msp-checklist", params={"user_id": "demo"})
+    response = client.get("/msp-checklist", headers=auth_headers("demo"))
     body = response.json()
 
     assert body["decision_notice_days"] == 45
@@ -221,7 +224,7 @@ def test_msp_checklist_no_letters_everything_missing():
 
 def test_msp_checklist_ssa_letter_satisfies_proof_of_income_only():
     _upload("ssa_sample.jpg")
-    response = client.get("/msp-checklist", params={"user_id": "demo"})
+    response = client.get("/msp-checklist", headers=auth_headers("demo"))
     items = {item["key"]: item["status"] for item in response.json()["items"]}
 
     assert items["proof_of_income"] == "already_have"
@@ -236,7 +239,7 @@ def test_msp_checklist_ssa_letter_satisfies_proof_of_income_only():
 
 
 def test_msp_checklist_labels_carry_official_english_term_in_korean():
-    response = client.get("/msp-checklist", params={"user_id": "demo"})
+    response = client.get("/msp-checklist", headers=auth_headers("demo"))
     income_item = next(i for i in response.json()["items"] if i["key"] == "proof_of_income")
 
     assert "소득 증명" in income_item["label_ko"]
@@ -312,7 +315,7 @@ def test_bill_upload_for_non_qmb_member_has_no_dispute_letter():
 def test_on_qmb_toggle_endpoint_drives_the_bill_flag_live():
     # This is the actual live-demo path: no DB hacking, just the toggle
     # a presenter can hit from the UI before uploading the bill.
-    toggle = client.post("/profile/on-qmb", params={"user_id": "demo", "on_qmb": True})
+    toggle = client.post("/profile/on-qmb", params={"on_qmb": True}, headers=auth_headers("demo"))
     assert toggle.status_code == 200
     assert toggle.json() == {"user_id": "demo", "on_qmb": True}
 
@@ -320,6 +323,6 @@ def test_on_qmb_toggle_endpoint_drives_the_bill_flag_live():
     assert response.json()["bill_check"]["has_flagged"] is True
 
     # Toggling back off should stop future bills from being flagged.
-    client.post("/profile/on-qmb", params={"user_id": "demo", "on_qmb": False})
+    client.post("/profile/on-qmb", params={"on_qmb": False}, headers=auth_headers("demo"))
     response2 = _upload("bill_sample.jpg")
     assert response2.json()["bill_check"]["has_flagged"] is False

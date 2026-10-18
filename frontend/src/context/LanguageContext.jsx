@@ -1,7 +1,7 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import { LanguageContext } from "./contexts";
 
 const STORAGE_KEY = "letterlens_language";
-const LanguageContext = createContext(null);
 
 export function LanguageProvider({ children }) {
   const [language, setLanguage] = useState(() => localStorage.getItem(STORAGE_KEY) || "");
@@ -15,10 +15,4 @@ export function LanguageProvider({ children }) {
       {children}
     </LanguageContext.Provider>
   );
-}
-
-export function useLanguage() {
-  const ctx = useContext(LanguageContext);
-  if (!ctx) throw new Error("useLanguage must be used within LanguageProvider");
-  return ctx;
 }

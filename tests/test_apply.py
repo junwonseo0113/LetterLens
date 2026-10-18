@@ -7,6 +7,7 @@ from sqlmodel import SQLModel
 from app.apply.normalize import FieldValueError, normalize
 from app.db import engine
 from app.main import app
+from tests.conftest import auth_headers
 
 client = TestClient(app)
 
@@ -28,11 +29,12 @@ def _sign_in(phone: str = "718-555-0142") -> tuple[dict, str]:
     return {"Authorization": f"Bearer {body['token']}"}, body["user_id"]
 
 
-def _upload(filename: str, user_id: str):
+def _upload(filename: str, headers: dict):
     response = client.post(
         "/letters",
         files={"file": (filename, io.BytesIO(b"fake-image-bytes"), "image/jpeg")},
-        data={"language": "zh", "user_id": user_id},
+        data={"language": "zh"},
+        headers=headers,
     )
     assert response.status_code == 200
     return response
@@ -71,15 +73,80 @@ def test_wrong_code_is_rejected_and_unauthenticated_calls_fail():
 
 
 def test_bad_phone_number_is_rejected():
-    assert client.post("/auth/request-code", json={"phone": "12345"}).status_code == 422
+    response = client.post("/auth/request-code", json={"phone": "12345"})
+    assert response.status_code == 422
+    assert response.json()["detail_zh"] == "请输入10位数的美国电话号码。"
+
+
+def test_code_requests_are_rate_limited():
+    for _ in range(5):
+        assert client.post("/auth/request-code", json={"phone": "7185550142"}).status_code == 200
+    assert client.post("/auth/request-code", json={"phone": "7185550142"}).status_code == 429
+
+
+def test_sign_out_revokes_the_session():
+    headers, _ = _sign_in()
+    assert client.post("/auth/sign-out", headers=headers).status_code == 200
+    assert client.get("/auth/me", headers=headers).status_code == 401
+
+
+def test_expired_session_is_rejected():
+    from datetime import datetime, timedelta, timezone
+
+    from sqlmodel import Session
+
+    from app.models import AuthSession
+
+    headers, _ = _sign_in()
+    token = headers["Authorization"].removeprefix("Bearer ")
+    with Session(engine) as session:
+        auth = session.get(AuthSession, token)
+        auth.created_at = datetime.now(timezone.utc) - timedelta(days=31)
+        session.add(auth)
+        session.commit()
+    assert client.get("/auth/me", headers=headers).status_code == 401
+
+
+@pytest.mark.parametrize(
+    "method,path",
+    [
+        ("get", "/letters"),
+        ("get", "/benefits"),
+        ("get", "/reminders"),
+        ("get", "/msp-checklist"),
+        ("get", "/profile/on-qmb"),
+        ("post", "/profile/on-qmb?on_qmb=true"),
+    ],
+)
+def test_personal_endpoints_require_sign_in(method, path):
+    assert getattr(client, method)(path).status_code == 401
+    # A user_id parameter no longer lets you read someone else's data.
+    assert getattr(client, method)(path + ("&" if "?" in path else "?") + "user_id=demo").status_code == 401
+
+
+def test_upload_requires_sign_in():
+    response = client.post(
+        "/letters",
+        files={"file": ("ssa.jpg", io.BytesIO(b"x"), "image/jpeg")},
+        data={"language": "en", "user_id": "demo"},
+    )
+    assert response.status_code == 401
+
+
+def test_users_only_see_their_own_letters():
+    alice, _ = _sign_in("7185550142")
+    bob, _ = _sign_in("6465550199")
+    _upload("ssa_benefit_letter_sample.jpg", alice)
+    assert len(client.get("/letters", headers=alice).json()) == 1
+    assert client.get("/letters", headers=bob).json() == []
 
 
 # --- pre-fill + interview ----------------------------------------------------
 
 
 def test_application_prefills_from_letters_and_sign_in():
-    headers, user_id = _sign_in()
-    _upload("ssa_benefit_letter_sample.jpg", user_id)
+    headers, _ = _sign_in()
+    _upload("ssa_benefit_letter_sample.jpg", headers)
 
     body = client.post("/applications", json={"program": "MSP"}, headers=headers).json()
     fields = {f["key"]: f for f in body["fields"]}
@@ -95,11 +162,11 @@ def test_application_prefills_from_letters_and_sign_in():
 
 
 def test_letter_uploaded_after_starting_fills_empty_fields_only():
-    headers, user_id = _sign_in()
+    headers, _ = _sign_in()
     app_id = client.post("/applications", json={"program": "MSP"}, headers=headers).json()["id"]
     client.put(f"/applications/{app_id}/fields/full_name", json={"value": "陈玉兰"}, headers=headers)
 
-    _upload("ssa_benefit_letter_sample.jpg", user_id)
+    _upload("ssa_benefit_letter_sample.jpg", headers)
     body = client.post("/applications", json={"program": "MSP"}, headers=headers).json()
     fields = {f["key"]: f for f in body["fields"]}
 
@@ -109,8 +176,8 @@ def test_letter_uploaded_after_starting_fills_empty_fields_only():
 
 
 def test_spoken_chinese_answers_are_normalized():
-    headers, user_id = _sign_in()
-    _upload("ssa_benefit_letter_sample.jpg", user_id)
+    headers, _ = _sign_in()
+    _upload("ssa_benefit_letter_sample.jpg", headers)
     app_id = client.post("/applications", json={"program": "MSP"}, headers=headers).json()["id"]
 
     body = _answer_remaining(headers, app_id)
@@ -122,6 +189,32 @@ def test_spoken_chinese_answers_are_normalized():
     assert fields["household_size"] == "1"
     assert fields["monthly_work_income"] == "0"
     assert body["next_question"] is None
+
+
+def test_answers_update_the_eligibility_profile():
+    from sqlmodel import Session
+
+    from app.models import ProfileRecord
+
+    headers, user_id = _sign_in()
+    _upload("ssa_benefit_letter_sample.jpg", headers)
+    app_id = client.post("/applications", json={"program": "MSP"}, headers=headers).json()["id"]
+    _answer_remaining(headers, app_id)
+    client.put(f"/applications/{app_id}/fields/household_size", json={"value": "2"}, headers=headers)
+
+    with Session(engine) as session:
+        profile = session.get(ProfileRecord, user_id)
+        assert profile.age >= 74  # born 1952-03-05
+        assert profile.married is False
+        assert profile.household_size == 2
+        assert profile.earned_income_monthly == 0
+        assert profile.ss_gross_monthly == 1700  # from the letter, untouched
+
+    # And the benefits check now sees her age (SNAP elderly rules apply).
+    snap = next(
+        r for r in client.get("/benefits", headers=headers).json()["results"] if r["program"] == "SNAP"
+    )
+    assert snap["status"] == "likely"
 
 
 def test_unparseable_answer_returns_bilingual_error():
@@ -169,8 +262,8 @@ def test_normalize_rejects_impossible_date():
 
 
 def test_submit_requires_signature_confirmation_and_all_answers():
-    headers, user_id = _sign_in()
-    _upload("ssa_benefit_letter_sample.jpg", user_id)
+    headers, _ = _sign_in()
+    _upload("ssa_benefit_letter_sample.jpg", headers)
     app_id = client.post("/applications", json={"program": "MSP"}, headers=headers).json()["id"]
     url = f"/applications/{app_id}/submit"
 
@@ -186,8 +279,8 @@ def test_submit_requires_signature_confirmation_and_all_answers():
 
 
 def test_missing_documents_route_to_caseworker_who_can_approve():
-    headers, user_id = _sign_in()
-    _upload("ssa_benefit_letter_sample.jpg", user_id)
+    headers, _ = _sign_in()
+    _upload("ssa_benefit_letter_sample.jpg", headers)
     app_id = client.post("/applications", json={"program": "MSP"}, headers=headers).json()["id"]
     _answer_remaining(headers, app_id)
 
@@ -209,8 +302,8 @@ def test_missing_documents_route_to_caseworker_who_can_approve():
 
 
 def test_caseworker_request_info_lets_user_fix_and_resubmit():
-    headers, user_id = _sign_in()
-    _upload("ssa_benefit_letter_sample.jpg", user_id)
+    headers, _ = _sign_in()
+    _upload("ssa_benefit_letter_sample.jpg", headers)
     app_id = client.post("/applications", json={"program": "MSP"}, headers=headers).json()["id"]
     _answer_remaining(headers, app_id)
     submit = {"signature_png": SIGNATURE, "confirmed": True}
@@ -237,8 +330,8 @@ def test_caseworker_request_info_lets_user_fix_and_resubmit():
 
 
 def test_submitted_application_is_locked():
-    headers, user_id = _sign_in()
-    _upload("ssa_benefit_letter_sample.jpg", user_id)
+    headers, _ = _sign_in()
+    _upload("ssa_benefit_letter_sample.jpg", headers)
     app_id = client.post("/applications", json={"program": "MSP"}, headers=headers).json()["id"]
     _answer_remaining(headers, app_id)
     for key in OTHER_DOCS:
@@ -260,15 +353,15 @@ def test_submitted_application_is_locked():
 
 
 def test_chinese_letter_explanation_keeps_exact_numbers():
-    body = _upload("ssa_benefit_letter_sample.jpg", "chen").json()
+    body = _upload("ssa_benefit_letter_sample.jpg", auth_headers("chen")).json()
     assert "社会安全局" in body["explanation"]
     assert "$1,700.00" in body["explanation"]
     assert "MOCK_MODE" not in body["explanation"]
 
 
 def test_chinese_benefits_explanations():
-    _upload("ssa_benefit_letter_sample.jpg", "chen")
-    results = client.get("/benefits", params={"user_id": "chen", "language": "zh"}).json()["results"]
+    _upload("ssa_benefit_letter_sample.jpg", auth_headers("chen"))
+    results = client.get("/benefits", params={"language": "zh"}, headers=auth_headers("chen")).json()["results"]
     assert results
     assert all("MOCK_MODE" not in r["explanation"] for r in results)
     assert any("您很可能符合" in r["explanation"] for r in results)

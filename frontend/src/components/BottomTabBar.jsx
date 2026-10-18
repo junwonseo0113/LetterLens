@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
-import { useLanguage } from "../context/LanguageContext";
+import { useAuth } from "../context/useAuth";
+import { useLanguage } from "../context/useLanguage";
 import { t } from "../strings";
 import { uploadLetter } from "../api";
 
@@ -39,7 +39,7 @@ function TabIcon({ icon, active }) {
 
 export default function BottomTabBar() {
   const { language } = useLanguage();
-  const { userId } = useAuth();
+  const { token } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const fileInputRef = useRef(null);
@@ -52,7 +52,7 @@ export default function BottomTabBar() {
 
     setUploading(true);
     try {
-      const result = await uploadLetter({ file, language: language || "en", userId });
+      const result = await uploadLetter({ file, language: language || "en", token });
       navigate("/letter-result", { state: { result } });
     } catch {
       // Home's own upload button surfaces detailed errors; the tab bar's

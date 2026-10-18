@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { useLanguage } from "../context/LanguageContext";
+import { useLanguage } from "../context/useLanguage";
 import { t } from "../strings";
 
 export default function Layout({ title, backTo, children, actions }) {

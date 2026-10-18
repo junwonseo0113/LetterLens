@@ -1,7 +1,8 @@
-import { createContext, useContext, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { UNAUTHORIZED_EVENT, signOutRequest } from "../api";
+import { AuthContext } from "./contexts";
 
 const STORAGE_KEY = "letterlens_auth";
-const AuthContext = createContext(null);
 
 function load() {
   try {
@@ -19,10 +20,22 @@ export function AuthProvider({ children }) {
     setAuth(session);
   }
 
-  function signOut() {
+  const clear = useCallback(() => {
     localStorage.removeItem(STORAGE_KEY);
     setAuth(null);
+  }, []);
+
+  function signOut() {
+    // Revoke the session server-side too; clear locally either way.
+    if (auth?.token) signOutRequest(auth.token).catch(() => {});
+    clear();
   }
+
+  // The backend rejected our token (expired or revoked) -- sign in again.
+  useEffect(() => {
+    window.addEventListener(UNAUTHORIZED_EVENT, clear);
+    return () => window.removeEventListener(UNAUTHORIZED_EVENT, clear);
+  }, [clear]);
 
   return (
     <AuthContext.Provider
@@ -31,10 +44,4 @@ export function AuthProvider({ children }) {
       {children}
     </AuthContext.Provider>
   );
-}
-
-export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
-  return ctx;
 }

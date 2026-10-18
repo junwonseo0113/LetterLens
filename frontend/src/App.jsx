@@ -1,6 +1,6 @@
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import BottomTabBar from "./components/BottomTabBar";
-import { useAuth } from "./context/AuthContext";
+import { useAuth } from "./context/useAuth";
 import ApplicationPack from "./screens/ApplicationPack";
 import Apply from "./screens/Apply";
 import ApplyReview from "./screens/ApplyReview";

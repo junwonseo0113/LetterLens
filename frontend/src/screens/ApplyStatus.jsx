@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import BigButton from "../components/BigButton";
 import Layout from "../components/Layout";
-import { useAuth } from "../context/AuthContext";
-import { useLanguage } from "../context/LanguageContext";
+import { useAuth } from "../context/useAuth";
+import { useLanguage } from "../context/useLanguage";
 import { t } from "../strings";
 import { errorText, startApplication } from "../api";
 

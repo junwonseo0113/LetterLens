@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { useLanguage } from "../context/LanguageContext";
+import { useLanguage } from "../context/useLanguage";
 import { t } from "../strings";
 
 // Finger/mouse signature on a canvas. Calls onChange with a PNG data URL

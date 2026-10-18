@@ -3,8 +3,8 @@ import BigButton from "../components/BigButton";
 import IconBadge from "../components/IconBadge";
 import Layout from "../components/Layout";
 import TracePanel from "../components/TracePanel";
-import { useAuth } from "../context/AuthContext";
-import { useLanguage } from "../context/LanguageContext";
+import { useAuth } from "../context/useAuth";
+import { useLanguage } from "../context/useLanguage";
 import { STATUS_KEY, t } from "../strings";
 import { formatMoney } from "../format";
 import { fetchBenefits } from "../api";
@@ -13,20 +13,18 @@ const MSP_PROGRAMS = new Set(["QMB", "QI", "MSP"]);
 
 export default function BenefitsFound() {
   const { language } = useLanguage();
-  const { userId } = useAuth();
-  const [benefits, setBenefits] = useState([]);
-  const [trace, setTrace] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { token } = useAuth();
+  const requestKey = `${token}:${language}`;
+  // Which request the shown data belongs to; loading until it matches.
+  const [loaded, setLoaded] = useState({ key: null, benefits: [], trace: [] });
+  const loading = loaded.key !== requestKey;
+  const { benefits, trace } = loaded;
 
   useEffect(() => {
-    setLoading(true);
-    fetchBenefits(userId, language || "en")
-      .then((data) => {
-        setBenefits(data.results);
-        setTrace(data.trace);
-      })
-      .finally(() => setLoading(false));
-  }, [userId, language]);
+    fetchBenefits(token, language || "en")
+      .then((data) => setLoaded({ key: requestKey, benefits: data.results, trace: data.trace }))
+      .catch(() => setLoaded({ key: requestKey, benefits: [], trace: [] }));
+  }, [token, language, requestKey]);
 
   const canApplyMsp = benefits.some(
     (b) => MSP_PROGRAMS.has(b.program) && (b.status === "likely" || b.status === "possible"),

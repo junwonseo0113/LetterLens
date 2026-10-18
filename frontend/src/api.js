@@ -1,5 +1,8 @@
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
+// Fired on any 401 so the app can drop an expired or revoked session.
+export const UNAUTHORIZED_EVENT = "letterlens:unauthorized";
+
 async function handleResponse(response) {
   if (!response.ok) {
     let detail = response.statusText;
@@ -11,6 +14,7 @@ async function handleResponse(response) {
     } catch {
       // response had no JSON body -- keep statusText
     }
+    if (response.status === 401) window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
     const error = new Error(detail);
     error.status = response.status;
     error.detailZh = detailZh;
@@ -36,50 +40,36 @@ function bearer(token) {
   return { Authorization: `Bearer ${token}` };
 }
 
-export async function uploadLetter({ file, language, userId }) {
+export async function uploadLetter({ file, language, token }) {
   const formData = new FormData();
   formData.append("file", file);
   formData.append("language", language);
-  formData.append("user_id", userId);
-  const response = await fetch(`${API_BASE}/letters`, { method: "POST", body: formData });
+  const response = await fetch(`${API_BASE}/letters`, { method: "POST", headers: bearer(token), body: formData });
   return handleResponse(response);
 }
 
-export async function fetchLetters(userId) {
-  const response = await fetch(`${API_BASE}/letters?user_id=${encodeURIComponent(userId)}`);
-  return handleResponse(response);
+export function fetchLetters(token) {
+  return jsonRequest("GET", "/letters", undefined, bearer(token));
 }
 
-export async function fetchReminders(userId) {
-  const response = await fetch(`${API_BASE}/reminders?user_id=${encodeURIComponent(userId)}`);
-  return handleResponse(response);
+export function fetchReminders(token) {
+  return jsonRequest("GET", "/reminders", undefined, bearer(token));
 }
 
-export async function fetchBenefits(userId, language) {
-  const response = await fetch(
-    `${API_BASE}/benefits?user_id=${encodeURIComponent(userId)}&language=${encodeURIComponent(language)}`
-  );
-  return handleResponse(response);
+export function fetchBenefits(token, language) {
+  return jsonRequest("GET", `/benefits?language=${encodeURIComponent(language)}`, undefined, bearer(token));
 }
 
-export async function fetchMspChecklist(userId) {
-  const response = await fetch(`${API_BASE}/msp-checklist?user_id=${encodeURIComponent(userId)}`);
-  return handleResponse(response);
+export function fetchMspChecklist(token) {
+  return jsonRequest("GET", "/msp-checklist", undefined, bearer(token));
 }
 
-export async function fetchOnQmb(userId) {
-  const response = await fetch(
-    `${API_BASE}/profile/on-qmb?user_id=${encodeURIComponent(userId)}`,
-  );
-  return handleResponse(response);
+export function fetchOnQmb(token) {
+  return jsonRequest("GET", "/profile/on-qmb", undefined, bearer(token));
 }
 
-export async function setOnQmb(userId, onQmb) {
-  const response = await fetch(
-    `${API_BASE}/profile/on-qmb?user_id=${encodeURIComponent(userId)}&on_qmb=${onQmb}`,
-    { method: "POST" },
-  );
-  return handleResponse(response);
+export function setOnQmb(token, onQmb) {
+  return jsonRequest("POST", `/profile/on-qmb?on_qmb=${onQmb}`, undefined, bearer(token));
 }
 
 // --- sign-in ---------------------------------------------------------------
@@ -90,6 +80,10 @@ export function requestCode(phone) {
 
 export function verifyCode(phone, code) {
   return jsonRequest("POST", "/auth/verify", { phone, code });
+}
+
+export function signOutRequest(token) {
+  return jsonRequest("POST", "/auth/sign-out", undefined, bearer(token));
 }
 
 // --- applications ------------------------------------------------------------

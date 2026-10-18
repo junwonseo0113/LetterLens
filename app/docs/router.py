@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile
 from sqlmodel import Session, select
 
+from app.auth import current_user
 from app.db import get_session
-from app.models import LetterRecord
+from app.models import AuthSession, LetterRecord
 
 from .pipeline import ExtractionError, process_letter
 from .schemas import LetterSummary, LetterUploadResponse
@@ -13,9 +14,11 @@ router = APIRouter()
 
 
 @router.get("/letters", response_model=list[LetterSummary])
-def list_letters(user_id: str = Query("demo"), session: Session = Depends(get_session)) -> list[LetterSummary]:
+def list_letters(
+    auth: AuthSession = Depends(current_user), session: Session = Depends(get_session)
+) -> list[LetterSummary]:
     records = session.exec(
-        select(LetterRecord).where(LetterRecord.user_id == user_id).order_by(LetterRecord.created_at.desc())
+        select(LetterRecord).where(LetterRecord.user_id == auth.user_id).order_by(LetterRecord.created_at.desc())
     ).all()
     return [
         LetterSummary(id=r.id, letter_type=r.letter_type, created_at=r.created_at) for r in records
@@ -26,7 +29,7 @@ def list_letters(user_id: str = Query("demo"), session: Session = Depends(get_se
 async def upload_letter(
     file: UploadFile,
     language: str = Form(...),
-    user_id: str = Form("demo"),
+    auth: AuthSession = Depends(current_user),
     session: Session = Depends(get_session),
 ) -> LetterUploadResponse:
     image_bytes = await file.read()
@@ -39,7 +42,7 @@ async def upload_letter(
             image_bytes=image_bytes,
             filename=file.filename or "upload",
             language=language,
-            user_id=user_id,
+            user_id=auth.user_id,
         )
     except ExtractionError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc

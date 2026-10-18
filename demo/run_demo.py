@@ -47,13 +47,14 @@ INTAKE_LETTERS = [
 BILL_LETTER = ("medical_bill_sample.jpg", "Medical bill")
 
 
-def _upload(client: TestClient, user_id: str, filename: str, label: str) -> dict:
+def _upload(client: TestClient, auth: dict, filename: str, label: str) -> dict:
     path = DEMO_DIR / filename
     with open(path, "rb") as f:
         response = client.post(
             "/letters",
             files={"file": (filename, f, "image/jpeg")},
-            data={"language": LANGUAGE, "user_id": user_id},
+            data={"language": LANGUAGE},
+            headers=auth,
         )
     response.raise_for_status()
     body = response.json()
@@ -90,7 +91,7 @@ def main() -> None:
         print(f"Code {code} verified -> signed in as {user_id}")
 
         for filename, label in INTAKE_LETTERS:
-            _upload(client, user_id, filename, label)
+            _upload(client, auth, filename, label)
 
         # Age isn't extracted from any letter type yet (no fixture
         # documents it) -- set it directly so the FIND step below reflects
@@ -109,10 +110,10 @@ def main() -> None:
             "enrollment so PROTECT has something to flag below.)"
         )
 
-        _upload(client, user_id, *BILL_LETTER)
+        _upload(client, auth, *BILL_LETTER)
 
         print("\n--- KEEP: upcoming deadlines ---")
-        reminders = client.get("/reminders", params={"user_id": user_id}).json()
+        reminders = client.get("/reminders", headers=auth).json()
         for r in reminders:
             print(
                 f"{r['program']}: due {r['deadline']} "
@@ -121,7 +122,7 @@ def main() -> None:
             print(f"  Checklist: {r['checklist']}")
 
         print("\n--- FIND: benefits found ---")
-        benefits = client.get("/benefits", params={"user_id": user_id, "language": LANGUAGE}).json()["results"]
+        benefits = client.get("/benefits", params={"language": LANGUAGE}, headers=auth).json()["results"]
         for b in benefits:
             print(f"\n{b['program']}: {b['status']} (confidence={b['confidence']})")
             print(f"  Monthly value: ${b['monthly_value']:,.2f}  Annual: ${b['annual_value']:,.2f}")

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useLanguage } from "../context/LanguageContext";
+import { useLanguage } from "../context/useLanguage";
 import { t } from "../strings";
 
 // Browser speech recognition (Chrome, Edge, iOS Safari 14.5+). No audio

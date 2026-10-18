@@ -2,6 +2,8 @@ import io
 
 import pytest
 from fastapi.testclient import TestClient
+
+from tests.conftest import auth_headers
 from sqlmodel import SQLModel
 
 from app.db import engine
@@ -21,7 +23,8 @@ def _upload(filename: str, language: str = "en", user_id: str = "demo"):
     return client.post(
         "/letters",
         files={"file": (filename, io.BytesIO(b"fake-image-bytes"), "image/jpeg")},
-        data={"language": language, "user_id": user_id},
+        data={"language": language},
+        headers=auth_headers(user_id),
     )
 
 
@@ -140,7 +143,7 @@ def test_list_letters_returns_uploads_newest_first():
     _upload("ssa_sample.jpg")
     _upload("bank_sample.jpg")
 
-    response = client.get("/letters", params={"user_id": "demo"})
+    response = client.get("/letters", headers=auth_headers("demo"))
     body = response.json()
 
     assert len(body) == 2
@@ -152,7 +155,7 @@ def test_list_letters_scoped_to_user():
     _upload("ssa_sample.jpg", user_id="alice")
     _upload("bank_sample.jpg", user_id="bob")
 
-    response = client.get("/letters", params={"user_id": "alice"})
+    response = client.get("/letters", headers=auth_headers("alice"))
     body = response.json()
 
     assert len(body) == 1

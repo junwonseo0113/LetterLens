@@ -2,6 +2,8 @@ import io
 
 import pytest
 from fastapi.testclient import TestClient
+
+from tests.conftest import auth_headers
 from sqlmodel import SQLModel
 
 from app.db import engine
@@ -21,12 +23,13 @@ def _upload(filename: str, language: str = "en", user_id: str = "demo"):
     return client.post(
         "/letters",
         files={"file": (filename, io.BytesIO(b"fake-image-bytes"), "image/jpeg")},
-        data={"language": language, "user_id": user_id},
+        data={"language": language},
+        headers=auth_headers(user_id),
     )
 
 
 def test_benefits_for_unknown_user_returns_defaults():
-    response = client.get("/benefits", params={"user_id": "nobody"})
+    response = client.get("/benefits", headers=auth_headers("nobody"))
     assert response.status_code == 200
     body = response.json()
     results = body["results"]
@@ -50,7 +53,7 @@ def test_benefits_for_unknown_user_returns_defaults():
 
 def test_benefits_reflects_uploaded_ssa_letter():
     _upload("ssa_sample.jpg")
-    response = client.get("/benefits", params={"user_id": "demo"})
+    response = client.get("/benefits", headers=auth_headers("demo"))
     results = response.json()["results"]
 
     qmb = next(b for b in results if b["program"] == "QMB")
@@ -64,14 +67,14 @@ def test_benefits_reflects_uploaded_ssa_letter():
 
 def test_benefits_language_param_passed_through():
     _upload("ssa_sample.jpg")
-    response = client.get("/benefits", params={"user_id": "demo", "language": "ko"})
+    response = client.get("/benefits", params={"language": "ko"}, headers=auth_headers("demo"))
     results = response.json()["results"]
     assert all("MOCK_MODE" in b["explanation"] for b in results)
 
 
 def test_benefits_trace_shows_rules_engine_not_ai_for_eligibility():
     _upload("ssa_sample.jpg")
-    response = client.get("/benefits", params={"user_id": "demo"})
+    response = client.get("/benefits", headers=auth_headers("demo"))
     trace = response.json()["trace"]
 
     step_names = [s["name"] for s in trace]

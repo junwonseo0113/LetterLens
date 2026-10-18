@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import BigButton from "../components/BigButton";
-import { useAuth } from "../context/AuthContext";
-import { useLanguage } from "../context/LanguageContext";
+import { useAuth } from "../context/useAuth";
+import { useLanguage } from "../context/useLanguage";
 import { t } from "../strings";
 import { errorText, requestCode, verifyCode } from "../api";
 

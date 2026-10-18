@@ -1,25 +1,25 @@
 import { useEffect, useState } from "react";
 import Layout from "../components/Layout";
-import { useAuth } from "../context/AuthContext";
-import { useLanguage } from "../context/LanguageContext";
+import { useAuth } from "../context/useAuth";
+import { useLanguage } from "../context/useLanguage";
 import { t } from "../strings";
 import { fetchBenefits, fetchMspChecklist, fetchReminders } from "../api";
 const MSP_PROGRAMS = new Set(["QMB", "QI", "MSP"]);
 
 export default function ApplicationPack() {
   const { language } = useLanguage();
-  const { userId } = useAuth();
+  const { token } = useAuth();
   const [reminders, setReminders] = useState([]);
   const [benefits, setBenefits] = useState([]);
   const [mspChecklist, setMspChecklist] = useState(null);
 
   useEffect(() => {
-    fetchReminders(userId).then(setReminders).catch(() => {});
-    fetchBenefits(userId, language || "en")
+    fetchReminders(token).then(setReminders).catch(() => {});
+    fetchBenefits(token, language || "en")
       .then((data) => setBenefits(data.results))
       .catch(() => {});
-    fetchMspChecklist(userId).then(setMspChecklist).catch(() => {});
-  }, [userId, language]);
+    fetchMspChecklist(token).then(setMspChecklist).catch(() => {});
+  }, [token, language]);
 
   const likelyPrograms = benefits.filter((b) => b.status === "likely" || b.status === "possible");
   const showMspChecklist = benefits.some(
